@@ -1,4 +1,4 @@
-name: Проверка уровней
+name: Проверка игры
 
 on:
   push:
@@ -6,12 +6,16 @@ on:
   pull_request:
 
 jobs:
-  levels:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Бот проходит все комнаты через настоящую игровую логику
-      - run: npm test
+      # данные: достижимость карт, квесты, предметы
+      - run: node tests/validate.mjs
+      # быстрый прогон логики мира для трёх классов
+      - run: node tests/smoke.mjs
+      # бот проходит игру целиком через настоящую логику
+      - run: node tests/bot.mjs warrior --quiet

@@ -33,6 +33,18 @@ export function updateEnemy(w, e, dt) {
   const visible = w.playerVisible() && !p.dead;
   if (def.boss) { bossUpdate(w, e, dt, d, visible); return; }
 
+  // «поводок»: слишком далеко от дома — враг сдаётся, возвращается и лечится
+  const home = dist(e.x, e.y, e.hx, e.hy);
+  if (e.returning) {
+    if (home < 30) e.returning = false;
+    else {
+      e.aggro = false; e.state = 'idle';
+      e.hp = Math.min(e.maxHp, e.hp + e.maxHp * 0.15 * dt);
+      if (e.stun <= 0) walk(w, e, angleTo(e.x, e.y, e.hx, e.hy), e.spd * 1.1, dt);
+      e.face = angleTo(e.x, e.y, e.hx, e.hy);
+      return;
+    }
+  }
   if (!e.aggro) {
     if (visible && d < def.aggro && w.los(e.x, e.y, p.x, p.y)) {
       e.aggro = true; e.state = 'chase';
@@ -40,8 +52,10 @@ export function updateEnemy(w, e, dt) {
       w.emit({ t: 'sfx', n: 'alert' });
       w.alert(e);
     }
-  } else if (!visible || d > def.aggro * 2.6 || dist(e.x, e.y, e.hx, e.hy) > 300) {
+  } else if (!visible || d > def.aggro * 2.6) {
     e.aggro = false; e.state = 'idle';
+  } else if (home > 300) {
+    e.aggro = false; e.state = 'idle'; e.returning = true;
   }
   if (e.stun > 0) return;
   if (!e.aggro) { idle(w, e, dt); return; }

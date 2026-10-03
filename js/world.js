@@ -730,13 +730,14 @@ export class World {
   updateInteract(inp) {
     const p = this.p, s = this.s;
     let best = null, bd = 1e9;
-    const consider = (kind, ref, x, y, range, label) => {
+    // меньше счёт — важнее: NPC и сундуки перебивают таблички, даже если табличка ближе
+    const consider = (kind, ref, x, y, range, label, bias = 0) => {
       const d = dist(p.x, p.y, x, y);
-      if (d < range && d < bd) { bd = d; best = { kind, ref, label, x, y }; }
+      if (d < range && d + bias < bd) { bd = d + bias; best = { kind, ref, label, x, y }; }
     };
-    for (const n of this.npcs) consider('npc', n, n.px, n.py, 26, 'Говорить');
-    for (const c of this.chests) if (!c.open) consider('chest', c, c.px, c.py, 22, 'Открыть');
-    for (const n of this.nodes) if (!n.taken) consider('node', n, n.px, n.py, 20, 'Собрать');
+    for (const n of this.npcs) consider('npc', n, n.px, n.py, 26, 'Говорить', -8);
+    for (const c of this.chests) if (!c.open) consider('chest', c, c.px, c.py, 22, 'Открыть', -4);
+    for (const n of this.nodes) if (!n.taken) consider('node', n, n.px, n.py, 20, 'Собрать', -4);
     for (const u of this.usables) {
       const pr = u.p;
       // расстояние до прямоугольника объекта
@@ -745,7 +746,8 @@ export class World {
       const lab = { shrine: 'Помолиться', lever: 'Потянуть', sign: 'Читать', page: 'Читать', beacon: 'Осмотреть' }[pr.use];
       if (pr.use === 'lever' && s.flags[pr.id]) continue;
       if (pr.use === 'page' && s.flags['page_' + pr.n]) continue;
-      if (d < 20 && d < bd) { bd = d; best = { kind: 'use', ref: u, label: lab, x: u.px, y: u.py }; }
+      const bias = pr.use === 'sign' ? 10 : 0;
+      if (d < 24 && d + bias < bd) { bd = d + bias; best = { kind: 'use', ref: u, label: lab, x: u.px, y: u.py }; }
     }
     this.prompt = best;
     if (inp.interact && best) this.interact(best);

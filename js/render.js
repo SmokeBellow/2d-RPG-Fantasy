@@ -11,7 +11,7 @@ import { NPCS, npcMarker } from './quests.js';
 const FONT = '8px "Press Start 2P", monospace';
 const HUMAN_ENEMIES = new Set(['goblin', 'goblinArcher', 'bandit', 'skeleton', 'husk', 'captain']);
 const TAU = Math.PI * 2;
-const DARK = { crypt: 0.52, citadel: 0.46 };
+const DARK = { crypt: 0.44, citadel: 0.4 };
 
 const flashCache = new WeakMap();
 function flashed(cv) {
@@ -615,7 +615,7 @@ export class Renderer {
     lx.globalCompositeOperation = 'destination-out';
     const cut = (x, y, r, a = 1) => { lx.globalAlpha = a; lx.drawImage(this.glow('cut' + r, r, '255,255,255', 1), Math.round(x - camX - r), Math.round(y - camY - r)); };
     const p = w.p;
-    cut(p.x, p.y - 6, 110, 1);
+    cut(p.x, p.y - 6, 125, 1);
     for (const s of this.lightSources) { if (s.x < camX - 70 || s.x > camX + VW + 70 || s.y < camY - 70 || s.y > camY + VH + 70) continue; cut(s.x, s.y, s.r, 0.85 + Math.sin(this.t * 7 + s.x) * 0.1); }
     if (this.theme === 'citadel') {
       for (const [tx, ty, kind] of this.fluids) { if (kind !== 1 || (tx + ty) % 3) continue; const x = tx * TILE + 8, y = ty * TILE + 8; if (x < camX - 40 || x > camX + VW + 40 || y < camY - 40 || y > camY + VH + 40) continue; cut(x, y, 38, 0.8); }

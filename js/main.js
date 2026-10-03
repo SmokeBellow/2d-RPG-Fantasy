@@ -214,7 +214,7 @@ function init() {
   window.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') input.setTouch(true); sound.unlock(); }, true);
   window.addEventListener('keydown', () => sound.unlock(), true);
 
-  $('scr-logo').addEventListener('pointerdown', () => { sound.unlock(); show('menu'); });
+  $('scr-logo').addEventListener('click', () => { sound.unlock(); show('menu'); });
   window.addEventListener('keydown', (e) => { if (screen === 'logo' && (e.code === 'Enter' || e.code === 'Space')) { sound.unlock(); show('menu'); } });
   $('m-continue').addEventListener('click', () => {
     const s = loadSave();
