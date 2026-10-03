@@ -157,8 +157,7 @@ export function city_low() {
   b.prop('monolith', 11, 3, { use: 'sign', title: 'Камень над входом', text: 'На камне над дверью вырезан круг и семь точек. Шестая стёрта: не сколота, а именно стёрта, как стирают имя. Под кругом нацарапано: «Помним, потому что кто-то должен».' });
 
   // шалаши и хижины
-  const homes = [['hut2', 24, 6], ['hut2', 24, 11], ['hut', 26, 5, { sprite: 'herb' }], ['hut2', 8, 18], ['hut2', 16, 18], ['hut2', 40, 18], ['hut2', 54, 6],
-    ['hut2', 6, 29], ['hut2', 14, 30], ['hut', 20, 30], ['hut2', 28, 30], ['hut2', 42, 30], ['hut', 50, 31], ['hut2', 58, 31], ['hut2', 5, 34], ['hut2', 30, 34]];
+  const homes = [['hut2', 24, 6], ['hut2', 24, 11], ['hut', 29, 5, { sprite: 'herb' }], ['hut2', 6, 18], ['hut2', 16, 18], ['hut2', 40, 18],     ['hut2', 6, 29], ['hut2', 14, 30], ['hut', 20, 30], ['hut2', 28, 30], ['hut2', 42, 30], ['hut', 50, 31], ['hut2', 58, 31], ['hut2', 5, 34], ['hut2', 30, 34]];
   for (const [k, x, y, ex] of homes) put(k, x, y, ex || {});
   put('tavern', 27, 16);
   b.prop('stairs', 35, 14, { id: 'sewer_grate' });
@@ -167,7 +166,7 @@ export function city_low() {
   dec('crate', 39, 14); dec('barrel', 33, 16);
 
   // логово Крыса
-  for (let x = 41; x <= 59; x++) if (x < 47 || x > 50) dec('fence', x, 4);
+  for (let x = 41; x <= 59; x++) dec('fence', x, 4);
   for (let y = 5; y <= 16; y++) { dec('fence', 41, y); dec('fence', 59, y); }
   for (let x = 41; x <= 59; x++) if (x < 47 || x > 50) dec('fence', x, 17);
   put('hut', 43, 6); put('table', 52, 9); put('campfire', 49, 11); put('crate', 55, 7); put('crate', 56, 7); put('barrel', 43, 13); put('barrel', 57, 14); put('cart', 54, 14);
@@ -229,7 +228,7 @@ export function city_college() {
   gap(b, 30, 46, 4, 2);
 
   // зал Коллегии
-  put('house', 22, 13); put('house', 28, 12); put('house', 34, 13);
+  dec('house', 21, 13); dec('house', 27, 13); dec('house', 33, 13);
   dec('pillar', 26, 16); dec('pillar', 37, 16); dec('banner', 24, 17); dec('banner', 39, 17); dec('statue', 31, 17);
   dec('bookshelf', 20, 19); dec('bookshelf', 41, 19);
 
@@ -249,7 +248,7 @@ export function city_college() {
   dec('well', 31, 30); dec('statue', 31, 27);
   for (const [x, y] of [[20, 25], [43, 25], [20, 36], [43, 36], [27, 24], [36, 24], [27, 38], [36, 38]]) dec('lamp', x, y);
   dec('stall', 38, 33); dec('barrel', 41, 33); dec('crate', 41, 34);
-  for (const [k, x, y] of [['house', 6, 16], ['house', 12, 16], ['house', 6, 41], ['house', 12, 41], ['hut2', 52, 24], ['hut2', 56, 24], ['house', 49, 41], ['house', 55, 41]]) put(k, x, y);
+  for (const [k, x, y] of [['house', 6, 16], ['house', 12, 16], ['house', 6, 41], ['house', 12, 41], ['hut2', 50, 29], ['hut2', 56, 29], ['house', 49, 41], ['house', 55, 41]]) put(k, x, y);
   b.prop('sign', 29, 43, { use: 'sign', title: 'Табличка', text: 'Коллегия Каменного Моста. Основана за три века до того, как стала нужна. Вход студентам и посетителям с письмом. Остальным тоже, но дольше.' });
   b.prop('sign', 43, 19, { use: 'sign', title: 'Табличка', text: 'Архив. Хранилище сорока тысяч томов и одной пустой полки. Вход по разрешению магистра.' });
   b.prop('sign', 24, 24, { use: 'sign', title: 'Объявление', text: 'Диспут в пятницу: «Является ли Эхо личностью?» Явка студентов обязательна. Явка Эха приветствуется, но не обеспечивается.' });

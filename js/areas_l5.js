@@ -10,7 +10,7 @@ export function harbor() {
   // море на юге, бухта на востоке
   b.rect(0, 47, 80, 9, T.WATER);
   b.rect(0, 51, 80, 5, T.DEEP);
-  b.blob(40, 47, 40, 2.2, T.WATER, false, 0.3);
+  b.blob(40, 48, 40, 1.4, T.WATER, false, 0.3);
   b.rect(73, 21, 7, 28, T.WATER);
   b.blob(74, 33, 3, 12, T.WATER, false, 0.3);
   b.rect(76, 21, 4, 28, T.DEEP);
@@ -85,6 +85,10 @@ export function harbor() {
   b.prop('cart', 49, 10); b.prop('cart', 43, 9);
   b.prop('sign', 48, 22, { use: 'sign', text: 'СОЛЯНАЯ ДОРОГА на север вдоль скал. Гарпии не платят пошлину, и это их единственное преимущество перед нами.' });
   b.prop('boulder', 52, 9); b.prop('boulder', 60, 6); b.prop('boulder', 44, 6);
+  b.scatter('boulder', 16, 3, 3, 40, 8, {}, [T.SAND]);
+  b.scatter('reeds', 16, 2, 44, 70, 3, {}, [T.SAND]);
+  b.scatter('boulder', 8, 60, 20, 12, 12, {}, [T.SAND]);
+  b.scatter('barrel', 5, 4, 30, 8, 4, {}, [T.COBBLE]);
   // --- остов «Верной»
   b.prop('boat', 62, 44, { deco: false });
   b.prop('ruin', 69, 44);
@@ -121,9 +125,9 @@ export function harbor() {
   b.chest('h_chest1', 70, 12, [['gold', 150], ['p_hp3', 2]]);
   b.chest('h_chest2', 6, 38, [['gold', 130], ['p_mp3', 2]]);
   b.chest('rogue_tally', 68, 39, [['q_tally', 1], ['gold', 140]]);
-  b.chest('h_chest3', 56, 3, [['gold', 120], ['p_mp3', 1]]);
-  for (const [i, x, y] of [[1, 8, 45], [2, 33, 44], [3, 51, 45], [4, 67, 47]]) b.node('bottle_' + i, 'q_bottle', x, y);
-  b.node('ring_node', 'q_ring', 63, 46);
+  b.chest('h_chest3', 60, 8, [['gold', 120], ['p_mp3', 1]]);
+  for (const [i, x, y] of [[1, 8, 45], [2, 33, 44], [3, 51, 45], [4, 70, 45]]) b.node('bottle_' + i, 'q_bottle', x, y);
+  b.node('ring_node', 'q_ring', 59, 45);
   b.reserve(5, 37, 3, 3, 1);
 
   // --- порталы
@@ -253,6 +257,7 @@ export function den() {
   for (const [x, y] of [[6, 12], [11, 12], [16, 12], [6, 17], [11, 17], [16, 17]]) { b.prop('table', x, y); }
   b.prop('lamp', 4, 11); b.prop('lamp', 22, 11); b.prop('lamp', 4, 21); b.prop('lamp', 22, 21);
   b.prop('banner', 13, 10);
+  b.prop('barrel', 4, 14); b.prop('barrel', 4, 15); b.prop('crate', 22, 16); b.prop('rack', 18, 21); b.prop('statue', 22, 13); b.prop('banner', 7, 10); b.prop('banner', 19, 10);
   b.prop('brazier', 20, 14);
   b.npc('fim', 9, 15);
   // приём

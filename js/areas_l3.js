@@ -74,6 +74,7 @@ export function valley_fields() {
   b.npc('vis_torn', 12, 14);
   b.prop('godaltar', 62, 47, { god: 'kharn', use: 'altar', title: 'Алтарь на поле копий', text: 'Клинок вкопан в землю по самую гарду. Земля вокруг тёплая.' });
   b.npc('vis_kharn', 62, 49);
+  b.npc('kelm', 57, 38);
   b.prop('godaltar', 85, 11, { god: 'mara', use: 'altar', title: 'Заросший курган', text: 'Из-под камня пробивается росток. Он слишком зелёный для этой земли.' });
   b.npc('vis_mara', 85, 13);
 
