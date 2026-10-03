@@ -79,7 +79,7 @@ export function city_market() {
   dec('gate', 32, 46);
   for (const [x, y] of [[31, 44], [36, 44]]) dec('lamp', x, y);
   for (const [x, y] of [[68, 21], [68, 26]]) dec('lamp', x, y);
-  dec('banner', 66, 21); dec('banner', 66, 26); dec('rack', 64, 24);
+  dec('pillar', 69, 21); dec('pillar', 69, 26); dec('banner', 66, 21); dec('banner', 66, 26); dec('rack', 64, 24);
   for (const [x, y] of [[3, 21], [3, 26]]) dec('lamp', x, y);
   dec('pillar', 31, 2); dec('pillar', 36, 2); dec('statue', 31, 5); dec('statue', 36, 5); dec('brazier', 33, 6); dec('brazier', 34, 6);
   dec('lamp', 13, 4); dec('lamp', 17, 4);
@@ -179,6 +179,12 @@ export function city_low() {
   dec('sign', 58, 22, { use: 'sign', title: 'Табличка', text: 'Нижний город. Вход свободный. Выход зависит от кошелька.' });
   dec('sign', 22, 22, { use: 'sign', title: 'Нацарапано мелом', text: 'Должен Крысу? Крыс помнит. Не должен? Крыс запомнит.' });
   dec('sign', 8, 24, { use: 'sign', title: 'Нацарапано углём', text: 'Круг и семь точек. Под ним чьей-то рукой: «Мы тебя слышим».' });
+  // мусор, лежанки и костры бродяг
+  b.scatter('barrel', 10, 3, 26, 58, 12, {}, [T.DIRT]); b.scatter('crate', 10, 3, 26, 58, 12, {}, [T.DIRT]); b.scatter('boulder', 8, 3, 2, 58, 20, {}, [T.DIRT]);
+  b.scatter('barrel', 4, 21, 3, 12, 10, {}, [T.DIRT]); b.scatter('crate', 4, 21, 3, 12, 10, {}, [T.DIRT]);
+  for (const [x, y] of [[16, 27], [38, 33], [56, 33], [4, 17]]) dec('campfire', x, y);
+  for (const [x, y] of [[17, 26], [39, 32], [57, 32]]) dec('bed', x, y);
+  dec('ruin', 24, 20); dec('ruin', 58, 34); dec('grave', 3, 40); dec('grave', 5, 40);
   b.chest('cl_chest1', 22, 35, [['gold', 70], ['p_hp2', 1]]);
   b.chest('cl_chest2', 61, 36, [['gold', 90], ['p_mp2', 1], ['c_copper', 1]]);
   b.chest('cl_chest3', 4, 22, [['gold', 55], ['p_hp1', 3]]);
@@ -189,9 +195,9 @@ export function city_low() {
   b.npc('seer_l', 17, 10, { hideIf: ['fac_council', 'list_given'] });
   b.npc('miren_r1', 15, 9, { showIf: ['fac_rem', 'seer_hidden'] });
   b.npc('miren_r2', 15, 9, { showIf: ['fac_rem', 'seer_handed'] });
-  b.npc('rat', 50, 12, { hideIf: 'rat_gone' });
-  b.npc('gang_a', 46, 13, { hideIf: 'rat_gone' });
-  b.npc('gang_b', 54, 12, { hideIf: 'rat_gone' });
+  b.npc('rat', 50, 12, { hideIf: ['rat_gone', 'k_rat'] });
+  b.npc('gang_a', 46, 13, { hideIf: ['rat_gone', 'k_gang_a'] });
+  b.npc('gang_b', 54, 12, { hideIf: ['rat_gone', 'k_gang_b'] });
   b.npc('bork', 30, 20);
   b.npc('merit', 9, 31);
   b.npc('leta', 45, 27);
@@ -263,6 +269,7 @@ export function city_college() {
   b.npc('bastian', 36, 28);
   b.npc('orso', 27, 21, { showIf: 'fac_collegium' });
   b.npc('faddei', 48, 19, { showIf: 'fac_collegium' });
+  b.npc('lukian', 49, 21, { showIf: 'lukian_left', hideIf: 'fac_council' });
   b.npc('lidia', 51, 12);
   b.zone('college_court', 18, 24, 28, 14);
 
@@ -334,6 +341,7 @@ export function sewers() {
   b.corridor(14, 8, 9, 8, 3, F);
   b.room(3, 4, 7, 9, F);                        // тупик
 
+  b.reserve(4, 35, 8, 5, 0);
   const junk = (x, y, w, h, n) => { b.scatter('barrel', n, x, y, w, h); b.scatter('crate', n, x, y, w, h); b.scatter('boulder', n + 1, x, y, w, h); b.scatter('beam', n, x, y, w, h); };
   junk(4, 35, 8, 5, 1); junk(20, 29, 12, 10, 2); junk(37, 29, 10, 8, 1); junk(15, 4, 26, 11, 3); junk(4, 18, 8, 6, 1); junk(47, 5, 6, 7, 1);
   b.prop('stairs', 6, 34, { id: 'sewer_up' });
@@ -349,11 +357,11 @@ export function sewers() {
   b.prop('stairs', 26, 3, { id: 'tower_shaft' });
 
   b.npc('gnail', 10, 36);
-  b.npc('dan_echo', 6, 21, { hideIf: ['dan_resolved'] });
+  b.npc('dan_echo', 6, 21, { hideIf: 'k_dan_echo' });
   b.npc('merit_s', 8, 21, { showIf: 'merit_down' });
   b.npc('lukian', 40, 32, { hideIf: 'lukian_left' });
 
-  for (const [x, y] of [[8, 38], [11, 35]]) b.enemy('sewerSlime', x, y, 7);
+  for (const [x, y] of [[12, 35], [12, 39]]) b.enemy('sewerSlime', x, y, 7);
   for (const [x, y] of [[16, 37], [19, 37]]) b.enemy('bat', x, y, 7);
   for (const [x, y] of [[22, 31], [30, 31], [22, 38], [30, 37]]) b.enemy('sewerSlime', x, y, 7);
   for (const [x, y] of [[26, 29], [20, 34]]) b.enemy('echoVagrant', x, y, 8);

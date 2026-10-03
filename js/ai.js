@@ -285,6 +285,9 @@ function approach(w, e, dt, d) {
     if (d > 70) walk(w, e, a, sp, dt); else if (d < 38) walk(w, e, a + Math.PI, sp * 0.8, dt); else walk(w, e, a + (Math.PI / 2) * side, sp * 0.9, dt);
   } else if (type === 'boss_lord') {
     if (d > 110) walk(w, e, a, sp, dt); else if (d < 70) walk(w, e, a + Math.PI, sp * 0.8, dt);
+  } else if (type === 'boss_mother') {
+    // тяжёлая и медленная: держится на средней дистанции, а вблизи давит ударом
+    if (d > 88) walk(w, e, a, sp, dt); else if (d < 34) walk(w, e, a + Math.PI, sp * 0.5, dt);
   } else if (d > e.r + 22) walk(w, e, a, sp, dt);
 }
 
@@ -340,6 +343,45 @@ function startBossAttack(w, e, d) {
     } else {
       b.flags.roared = true; b.flags.enrage = true;
       script(w, e, 1.1, [[0.2, () => { summon(w, e, 'goblin', 2, e.lvl - 1); w.emit({ t: 'shake', v: 4 }); w.emit({ t: 'nova', x: e.x, y: e.y, r: 50, col: '#ff8a4a' }); }]]);
+    }
+    return;
+  }
+
+  // ---------- Мать Стоков
+  if (type === 'boss_mother') {
+    const ph = b.phase;
+    const alive = w.enemies.filter((o) => o.alive && o.summoned).length;
+    let name;
+    if (!alive && (!b.flags.lastSummon || b.n - b.flags.lastSummon > 5)) name = 'brood';
+    else if (d < 56) name = pick([['slam', 5], ['spit', 2], ['pools', 2]]);
+    else if (ph >= 2) name = pick([['spit', 3], ['pools', 3], ['ring', 3], ['rain', 3]]);
+    else name = pick([['spit', 4], ['pools', 4], ['ring', 1]]);
+    if (name === b.last && name !== 'brood') name = pick([['spit', 3], ['pools', 3], ['slam', 1]]);
+    b.last = name;
+    const a = A(); e.face = a;
+    if (name === 'spit') {
+      const volley = () => { const aa = A(); for (let i = -2; i <= 2; i++) w.shoot({ x: e.x, y: e.y - 6, ang: aa + i * 0.2, speed: 96, r: 3.5, dmg: e.atk * 0.75, kind: 'blight', life: 3.2 }); w.emit({ t: 'sfx', n: 'shoot' }); };
+      script(w, e, ph >= 2 ? 1.6 : 1.2, ph >= 2 ? [[0.3, volley], [0.75, volley], [1.2, volley]] : [[0.3, volley], [0.8, volley]]);
+    } else if (name === 'pools') {
+      script(w, e, 1.5, [
+        [0, () => { aimTele(w, e, { x: p.x, y: p.y, r: 26, dur: 0.9, dmg: e.atk * 1.2, kind: 'tendril' }); w.emit({ t: 'sfx', n: 'warn' }); }],
+        [0.45, () => aimTele(w, e, { x: p.x + rnd(-34, 34), y: p.y + rnd(-34, 34), r: 24, dur: 0.85, dmg: e.atk * 1.1, kind: 'tendril' })],
+        [0.9, () => aimTele(w, e, { x: p.x + rnd(-40, 40), y: p.y + rnd(-40, 40), r: 24, dur: 0.85, dmg: e.atk * 1.1, kind: 'tendril' })],
+      ]);
+    } else if (name === 'ring') {
+      const n = 18;
+      const ring = (off) => () => { for (let i = 0; i < n; i++) w.shoot({ x: e.x, y: e.y - 6, ang: off + (i / n) * TAU, speed: 66, r: 3.5, dmg: e.atk * 0.65, kind: 'blight', life: 4.5 }); w.emit({ t: 'sfx', n: 'shoot' }); };
+      script(w, e, ph >= 2 ? 1.6 : 1.1, ph >= 2 ? [[0.2, ring(0)], [0.9, ring(Math.PI / n)]] : [[0.3, ring(0)]]);
+    } else if (name === 'rain') {
+      const steps = [];
+      for (let i = 0; i < 7; i++) steps.push([i * 0.16, () => aimTele(w, e, { x: p.x + rnd(-62, 62), y: p.y + rnd(-62, 62), r: 22, dur: 0.85, dmg: e.atk * 1.0, kind: 'tendril' })]);
+      script(w, e, 2.2, steps);
+    } else if (name === 'slam') {
+      script(w, e, 1.3, [[0, () => { aimTele(w, e, { x: e.x, y: e.y, r: 50, dur: 0.95, dmg: e.atk * 1.5, kind: 'shock', kb: 140 }); w.emit({ t: 'sfx', n: 'warn' }); }]]);
+    } else {
+      b.flags.lastSummon = b.n;
+      if (ph >= 2) b.flags.enrage = true;
+      script(w, e, 1.3, [[0.3, () => { summon(w, e, 'sewerSlime', ph >= 2 ? 3 : 2, Math.max(1, e.lvl - 1)); w.emit({ t: 'shake', v: 3 }); w.emit({ t: 'nova', x: e.x, y: e.y, r: 56, col: '#5aff7a' }); }]]);
     }
     return;
   }

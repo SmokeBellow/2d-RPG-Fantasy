@@ -227,7 +227,7 @@ export const ENEMIES = {
   // боссы
   chieftain: { name: 'Грок, вождь гоблинов', ai: 'boss_chief', boss: true, hp: 380, atk: 16, spd: 34, r: 9, xp: 160, gold: [40, 60], aggro: 150, drops: [['q_core', 1]], title: 'Грок, вождь гоблинов', look: { c: 'chieftain' } },
   ragged: { name: 'Рваный Альд', ai: 'boss_captain', boss: true, hp: 320, atk: 18, spd: 52, r: 6, xp: 180, gold: [50, 80], aggro: 150, title: 'Рваный Альд, главарь бандитов', look: { h: 'captain' } },
-  mother: { name: 'Мать Стоков', ai: 'boss_mother', boss: true, hp: 700, atk: 20, spd: 30, r: 10, xp: 360, gold: [70, 100], aggro: 170, drops: [['q_sample', 1]], title: 'Мать Стоков', look: { c: 'spitter', scale: 1.9, tint: '#6aa8a0' } },
+  mother: { name: 'Мать Стоков', ai: 'boss_mother', boss: true, hp: 700, atk: 20, spd: 30, r: 10, xp: 360, gold: [70, 100], aggro: 170, drops: [['q_core2', 1], ['q_sample', 1]], title: 'Мать Стоков', look: { c: 'spitter', scale: 1.9, tint: '#6aa8a0' } },
   gatekeeper: { name: 'Привратник Меры', ai: 'boss_king', boss: true, hp: 1100, atk: 30, spd: 36, r: 9, xp: 640, gold: [120, 160], aggro: 190, drops: [['q_core3', 1], ['q_proof', 1]], minion: 'echoSoldier', title: 'Привратник Меры', look: { c: 'king' } },
   oldone: { name: 'Последний Прежний', ai: 'boss_lord', boss: true, hp: 2600, atk: 42, spd: 40, r: 11, xp: 2000, gold: [300, 300], aggro: 220, title: 'Последний Прежний', look: { c: 'lord', tint: '#e8d8a8' } },
 };

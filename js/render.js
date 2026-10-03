@@ -305,7 +305,7 @@ export class Renderer {
       if (pr.k === 'bush') spr = this.bush(this.treeTheme, hash2(pr.x, pr.y, 3) > 0.7);
       else if (pr.k === 'stonedoor') { const dr = w.doors.find((q) => q.id === pr.id); if (dr && dr.open) continue; spr = e.s; }
       else if (pr.k === 'barrier') { if (flags[pr.flagGone]) continue; spr = e.frames[Math.floor(this.t * e.fps) % e.frames.length]; }
-      else if (pr.k === 'beacon') spr = flags.beacon_lit ? e.on[Math.floor(this.t * 6) % 2] : e.off;
+      else if (pr.k === 'beacon') spr = (flags.beacon_lit || flags['beacon' + (pr.beacon || 1)]) ? e.on[Math.floor(this.t * 6) % 2] : e.off;
       else if (pr.k === 'lever') spr = flags[pr.id] ? e.on : e.off;
       else if (pr.k === 'hut') spr = e[pr.sprite || 'elder'];
       else if (pr.k === 'godaltar') { const g = pr.god || 'x'; spr = e.by[g] || (e.by[g] = godAltarSprite(GODS[g] ? GODS[g].color : '#c8c8d8')); }
