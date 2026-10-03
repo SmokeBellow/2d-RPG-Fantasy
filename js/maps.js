@@ -4,10 +4,11 @@ import { PROP_DEF, Builder, solidGrid } from './maps_core.js';
 import { BUILD as L1 } from './areas_l1.js';
 import { BUILD as L2 } from './areas_l2.js';
 import { BUILD as L3 } from './areas_l3.js';
-import { BUILD as L45 } from './areas_l45.js';
+import { BUILD as L4 } from './areas_l4.js';
+import { BUILD as L5 } from './areas_l5.js';
 import { BUILD as L6 } from './areas_l6.js';
 
-const BUILDERS = { ...L1, ...L2, ...L3, ...L45, ...L6 };
+const BUILDERS = { ...L1, ...L2, ...L3, ...L4, ...L5, ...L6 };
 const cache = {};
 export function getMap(id) {
   if (!BUILDERS[id]) throw new Error(`нет карты ${id}`);

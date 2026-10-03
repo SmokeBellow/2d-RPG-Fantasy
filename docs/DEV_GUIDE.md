@@ -4,7 +4,7 @@
 Весь язык игры русский. Тон взрослый, без детскости, без пафоса и без «ИИ-штампов». Реплики живые, у каждого NPC свой голос.
 
 ## Файлы локации
-- `js/areas_lN.js`: функции-билдеры карт и `export const BUILD = { id: fn, ... }` (уже подключён в `maps.js`).
+- `js/areas_lN.js (N = 2, 3, 4, 5, 6)`: функции-билдеры карт и `export const BUILD = { id: fn, ... }` (уже подключён в `maps.js`).
 - `js/story_lN.js`: `NPC(...)`, `Q(...)`, `N(...)`, `E(...)`, `ITEM(...)` из `story_core.js` (уже подключён в `quests.js`).
 - `js/looks_lN.js`: `NPC_LOOKS` и `ENEMY_HUMAN` для новых внешностей (формат — как в `sprites_chars.js`, поля humanSet: skin, hairC, hair, beard, top[3], pants[2], boots, hat, hatCol, hold, robe, cape, pads, tabard и др.; посмотри существующие).
 - Общие файлы (`defs.js`, `ai.js`, `world.js`, `render.js`, `ui.js`, `gods.js`) трогай минимально, только Edit точечно, перечитывая файл перед правкой: рядом работают другие. Новые предметы регистрируй через `ITEM('id', {name, desc})` в своём story-файле; новых врагов не добавляй без необходимости (ростер уже есть в `defs.js` ENEMIES, у каждого `look`).

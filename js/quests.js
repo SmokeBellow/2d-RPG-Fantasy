@@ -6,7 +6,8 @@ import { QUESTS, NPCS, NODES, ENTRY, done, H } from './story_core.js';
 import './story_l1.js';
 import './story_l2.js';
 import './story_l3.js';
-import './story_l45.js';
+import './story_l4.js';
+import './story_l5.js';
 import './story_l6.js';
 
 export { QUESTS, NPCS, NODES, ENTRY };
