@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#1a1022">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Эмбервейл">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="description" content="Эмбервейл — пиксельная фэнтези-RPG с боем в реальном времени: воин, маг или разбойник против Скверны">
+  <title>Эмбервейл</title>
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- 1. Заставка -->
+  <section id="scr-logo" class="scr">
+    <div class="logo-box">
+      <canvas id="logo-flame" width="48" height="56"></canvas>
+      <h1>ЭМБЕРВЕЙЛ</h1>
+      <div class="logo-sub">пиксельная RPG</div>
+      <div class="logo-tap">Нажмите, чтобы начать</div>
+    </div>
+  </section>
+
+  <!-- 2. Главное меню -->
+  <section id="scr-menu" class="scr">
+    <div class="menu-box">
+      <div class="menu-logo">
+        <div class="menu-kicker">пламя гаснет. мир ждёт героя</div>
+        <h1 class="menu-title">ЭМБЕРВЕЙЛ</h1>
+      </div>
+      <div class="menu-buttons">
+        <button class="btn primary big" id="m-continue">Продолжить</button>
+        <button class="btn big" id="m-new">Новая игра</button>
+        <button class="btn" id="m-settings">Настройки</button>
+        <button class="btn" id="m-about">Об игре</button>
+      </div>
+      <div class="menu-save" id="menu-save"></div>
+    </div>
+    <div class="menu-foot">
+      <span class="kb">WASD — ходьба · Пробел/J — атака · K, L — навыки · Shift — уклон · E — говорить · 1, 2 — зелья · I — сумка · Tab — журнал</span>
+    </div>
+  </section>
+
+  <!-- 3. Выбор класса -->
+  <section id="scr-class" class="scr">
+    <button class="back-btn" data-back="menu">‹ Назад</button>
+    <h2 class="scr-title">Выбери свой путь</h2>
+    <div class="class-row" id="class-row"></div>
+  </section>
+
+  <!-- 4. Об игре -->
+  <section id="scr-about" class="scr">
+    <button class="back-btn" data-back="menu">‹ Меню</button>
+    <div class="about-box">
+      <h2 class="scr-title">Об игре</h2>
+      <p><b>Эмбервейл</b> — приключенческая RPG с боем в реальном времени. Пламя Эмбера, хранившее мир от Скверны, угасает. Только герой сможет собрать осколки Пламени, зажечь маяк Тихого Брода и сразиться со Скверным Владыкой.</p>
+      <p>Четыре области, четыре босса, три класса, более десяти заданий. Всё нарисовано кодом, музыка и звуки синтезируются прямо в браузере.</p>
+      <p class="about-small">Играет в одном файле: никаких установок, прогресс сохраняется в браузере.<br>Сделано в одном стиле с «Шерстинами» — MurMyak Games.</p>
+      <button class="btn primary" id="about-done">В меню</button>
+    </div>
+  </section>
+
+  <!-- 4б. Настройки -->
+  <section id="scr-settings" class="scr">
+    <button class="back-btn" id="s-back">‹ Меню</button>
+    <div class="card narrow">
+      <h2 class="scr-title">Настройки</h2>
+      <div class="vol"><label>Музыка <input type="range" id="s-music" min="0" max="100"></label></div>
+      <div class="vol"><label>Звуки <input type="range" id="s-sfx" min="0" max="100"></label></div>
+      <button class="btn" id="s-fs">Полный экран</button>
+      <button class="btn" id="s-reset">Удалить сохранение</button>
+    </div>
+  </section>
+
+  <!-- 5. Игра -->
+  <section id="scr-game" class="scr">
+    <div id="stage"><canvas id="game"></canvas></div>
+
+    <div id="hud">
+      <div id="hud-tl">
+        <div class="portrait"><canvas id="hud-face" width="26" height="32"></canvas><span id="hud-lvl">1</span></div>
+        <div class="bars">
+          <div class="bar hp"><i id="hp-fill"></i><b id="hp-txt"></b></div>
+          <div class="bar mp"><i id="mp-fill"></i><b id="mp-txt"></b></div>
+          <div class="bar xp"><i id="xp-fill"></i></div>
+        </div>
+        <div id="hud-gold"><canvas id="gold-ico" width="10" height="10"></canvas><span id="gold-txt">0</span></div>
+      </div>
+
+      <div id="hud-tr">
+        <button class="hud-btn" id="b-journal" aria-label="Журнал">
+          <svg viewBox="0 0 16 16" width="60%" height="60%"><path d="M3 1h10v14H3z" fill="#fff6e6"/><path d="M5 4h6M5 7h6M5 10h4" stroke="#4a3326" stroke-width="1.2"/></svg>
+        </button>
+        <button class="hud-btn" id="b-inv" aria-label="Сумка">
+          <svg viewBox="0 0 16 16" width="60%" height="60%"><path d="M4 6h8l1 9H3z" fill="#f2b84a"/><path d="M6 6V4a2 2 0 0 1 4 0v2" stroke="#fff6e6" stroke-width="1.4" fill="none"/></svg>
+        </button>
+        <button class="hud-btn" id="b-pause" aria-label="Пауза">❚❚</button>
+      </div>
+
+      <div id="tracker"></div>
+
+      <div id="bossbar"><div class="boss-name" id="boss-name"></div><div class="boss-track"><i id="boss-fill"></i></div></div>
+
+      <div id="prompt"></div>
+
+      <!-- панель навыков: те же кнопки работают и мышью, и пальцем -->
+      <div id="skillbar">
+        <button class="sk" id="t-hp"><canvas width="16" height="16"></canvas><b></b><kbd>1</kbd></button>
+        <button class="sk" id="t-mp"><canvas width="16" height="16"></canvas><b></b><kbd>2</kbd></button>
+        <button class="sk" id="t-dodge"><canvas width="24" height="24"></canvas><em></em><kbd>Shift</kbd></button>
+        <button class="sk" id="t-skill0"><canvas width="24" height="24"></canvas><em></em><kbd>K</kbd></button>
+        <button class="sk" id="t-skill1"><canvas width="24" height="24"></canvas><em></em><kbd>L</kbd></button>
+        <button class="sk big" id="t-attack"><canvas width="24" height="24"></canvas><kbd>Пробел</kbd></button>
+        <button class="sk act" id="t-interact"><span>E</span></button>
+      </div>
+    </div>
+
+    <div id="touch-zone"></div>
+    <div id="joy"><div id="joy-knob"></div></div>
+
+    <!-- диалог -->
+    <div id="dialog" class="overlay">
+      <div class="dlg">
+        <div class="dlg-name" id="dlg-name"></div>
+        <div class="dlg-text" id="dlg-text"></div>
+        <div class="dlg-next" id="dlg-next">▶</div>
+        <div class="dlg-choices" id="dlg-choices"></div>
+      </div>
+    </div>
+
+    <!-- сумка / герой / журнал -->
+    <div id="panel" class="overlay center">
+      <div class="card wide">
+        <div class="tabs">
+          <button data-tab="char">Герой</button>
+          <button data-tab="bag">Сумка</button>
+          <button data-tab="quests">Журнал</button>
+          <button class="close" id="panel-close" aria-label="Закрыть">✕</button>
+        </div>
+        <div class="tab-body" id="tab-body"></div>
+      </div>
+    </div>
+
+    <!-- магазин -->
+    <div id="shop" class="overlay center">
+      <div class="card wide">
+        <div class="tabs">
+          <span class="shop-title" id="shop-title"></span>
+          <button data-stab="buy">Купить</button>
+          <button data-stab="sell">Продать</button>
+          <span class="shop-gold"><canvas id="shop-coin" width="10" height="10"></canvas> <b id="shop-gold">0</b></span>
+          <button class="close" id="shop-close" aria-label="Закрыть">✕</button>
+        </div>
+        <div class="tab-body" id="shop-body"></div>
+      </div>
+    </div>
+
+    <!-- пауза -->
+    <div id="pause" class="overlay center">
+      <div class="card narrow">
+        <h2 class="scr-title">Пауза</h2>
+        <button class="btn primary" id="p-resume">Продолжить</button>
+        <div class="vol"><label>Музыка <input type="range" id="p-music" min="0" max="100"></label></div>
+        <div class="vol"><label>Звуки <input type="range" id="p-sfx" min="0" max="100"></label></div>
+        <button class="btn" id="p-fs">Полный экран</button>
+        <button class="btn" id="p-menu">Сохранить и выйти в меню</button>
+      </div>
+    </div>
+
+    <!-- смерть -->
+    <div id="death" class="overlay center dark">
+      <div class="card narrow">
+        <h2 class="scr-title red">Вы пали</h2>
+        <p>Пламя Эмбера ещё не угасло. Вы очнётесь у последнего алтаря, потеряв часть золота.</p>
+        <button class="btn primary" id="d-respawn">Очнуться</button>
+      </div>
+    </div>
+
+    <!-- финал -->
+    <div id="ending" class="overlay center dark">
+      <div class="card wide ending-card">
+        <h2 class="scr-title">Пламя вернулось</h2>
+        <p>Скверный Владыка пал. Маяк Тихого Брода горит ярче прежнего, а в Шёпотном лесу снова поют птицы. Мир спасён, и имя героя будут помнить долго.</p>
+        <div class="ending-stats" id="ending-stats"></div>
+        <div class="row">
+          <button class="btn primary" id="e-continue">Продолжить путешествие</button>
+          <button class="btn" id="e-menu">В меню</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="banner"></div>
+    <div id="toasts"></div>
+    <div id="questpop"></div>
+  </section>
+
+  <div id="fade"></div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

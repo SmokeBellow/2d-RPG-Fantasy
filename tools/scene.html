@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>scene</title>
+<link rel="stylesheet" href="../css/fonts.css">
+<body style="margin:0;background:#000"><canvas id="c" style="width:1440px;height:810px;image-rendering:pixelated"></canvas>
+<script type="module">
+import { World } from '../js/world.js';
+import { newState } from '../js/state.js';
+import { Renderer } from '../js/render.js';
+const q = new URLSearchParams(location.search);
+const s = newState(q.get('cls') || 'warrior');
+s.lvl = +(q.get('lvl') || 1);
+if (q.get('area')) s.area = q.get('area');
+const w = new World(s);
+if (q.get('x')) { w.p.x = +q.get('x') * 16 + 8; w.p.y = +q.get('y') * 16 + 8; }
+if (q.get('flags')) for (const f of q.get('flags').split(',')) s.flags[f] = true;
+await document.fonts.load('8px "Press Start 2P"');
+const r = new Renderer(document.getElementById('c'));
+r.setWorld(w);
+const inp = { mx: 0, my: 0, aimX: null, aimY: null, attack: false, skill: [false, false], dodge: false, potHp: false, potMp: false, interact: false };
+let steps = +(q.get('steps') || 120);
+const mv = q.get('move');
+for (let i = 0; i < steps; i++) {
+  inp.mx = mv === 'right' ? 1 : 0; inp.my = mv === 'down' ? 1 : 0;
+  inp.attack = q.get('attack') ? i % 30 < 5 : false;
+  inp.skill = [q.get('skill') && i % 60 === 5, false];
+  w.update(1 / 60, inp); r.consume(w.drain()); r.draw(w, 1 / 60);
+}
+window.done = true;
+</script>

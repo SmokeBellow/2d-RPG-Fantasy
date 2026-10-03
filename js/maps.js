@@ -246,14 +246,14 @@ function buildForest() {
   b.blob(33, 63, 4, 3, T.GRASS, true);
 
   // тропы
-  b.path([[47, 69], [47, 62], [47, 57]], 3, T.DIRT);
-  b.path([[44, 57], [34, 52], [28, 47]], 3, T.DIRT);       // на запад: разбойники
-  b.path([[50, 57], [60, 52], [68, 46]], 3, T.DIRT);       // на восток: гоблины
-  b.path([[27, 33], [29, 26], [38, 21], [44, 19]], 3, T.DIRT); // разбойники -> святилище
-  b.path([[72, 31], [66, 25], [56, 20], [51, 19]], 3, T.DIRT); // гоблины -> святилище
+  b.path([[47, 69], [47, 62], [47, 57]], 2.4, T.DIRT);
+  b.path([[44, 57], [34, 52], [28, 47]], 2.4, T.DIRT);       // на запад: разбойники
+  b.path([[50, 57], [60, 52], [68, 46]], 2.4, T.DIRT);       // на восток: гоблины
+  b.path([[27, 33], [29, 26], [38, 21], [44, 19]], 2.4, T.DIRT); // разбойники -> святилище
+  b.path([[72, 31], [66, 25], [56, 20], [51, 19]], 2.4, T.DIRT); // гоблины -> святилище
   b.path([[47, 14], [47, 10]], 3, T.DIRT);                 // святилище -> врата склепа
   b.path([[27, 33], [20, 20], [17, 15]], 2, T.DIRT);       // к паукам
-  b.path([[77, 31], [82, 22], [84, 14]], 3, T.DIRT);       // к Цитадели
+  b.path([[77, 31], [82, 22], [84, 14]], 2.4, T.DIRT);       // к Цитадели
   b.path([[56, 58], [70, 60], [82, 62]], 2, T.DIRT);       // к коту
   b.path([[40, 58], [26, 60], [16, 61]], 2, T.DIRT);       // к волкам
   b.path([[50, 59], [60, 63]], 2, T.DIRT);
@@ -262,7 +262,7 @@ function buildForest() {
   // озеро: остров с сундуком и мост
   b.disc(47, 37, 2.5, T.SAND, true);
   b.path([[47, 44], [47, 40]], 2, T.BRIDGE, true);
-  b.chest('f_island', 47, 37, [['c_amulet', 1]], { quest: 'amulet' });
+  b.chest('f_island', 47, 37, [['q_amulet', 1]]);
   // берег: песок вокруг воды
   for (let j = 0; j < b.h; j++) for (let i = 0; i < b.w; i++) {
     if (b.get(i, j) !== T.GRASS) continue;
@@ -296,7 +296,7 @@ function buildForest() {
   b.enemy('chieftain', 74, 37, 6, { unique: 'chieftain' });
   for (const [x, y] of [[66, 39], [70, 44], [78, 41], [69, 34]]) b.enemy('goblin', x, y, 4);
   for (const [x, y] of [[62, 42], [80, 40]]) b.enemy('goblinArcher', x, y, 4);
-  b.chest('f_goblin', 82, 44, [['gold', 70], ['w_war3', 1]], { classLoot: 'weapon3' });
+  b.chest('f_goblin', 82, 44, [['gold', 70], ['@weapon3', 1]]);
 
   // стартовая поляна и волчьи тропы
   for (const [x, y] of [[41, 56], [53, 54], [47, 53]]) b.enemy('wolf', x, y, 2);
@@ -372,7 +372,7 @@ function buildCrypt() {
   b.enemy('king', 32, 7, 10, { unique: 'king' });
 
   b.chest('c_lib', 5, 35, [['gold', 120], ['p_hp2', 2], ['p_mp2', 1]]);
-  b.chest('c_arm', 58, 35, [['gold', 120], ['a_war3', 1]], { classLoot: 'armor3' });
+  b.chest('c_arm', 58, 35, [['gold', 120], ['@armor3', 1]]);
   b.chest('c_chapel', 41, 15, [['gold', 150], ['p_mp2', 2]]);
 
   b.zone('boss_hall', 16, 2, 32, 10);

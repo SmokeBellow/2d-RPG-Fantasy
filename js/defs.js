@@ -41,7 +41,7 @@ export const CFG = {
   autoAimCone: 0.75,   // радианы
 };
 
-export const xpForLevel = (lvl) => Math.round(30 * Math.pow(lvl, 1.55) + 20 * lvl);
+export const xpForLevel = (lvl) => Math.round(22 * Math.pow(lvl, 1.5) + 14 * lvl);
 
 // ---------------------------------------------------------------- классы
 // base — на 1 уровне, grow — прирост за уровень
@@ -145,7 +145,7 @@ gear(ITEMS, [
   { id: 'q_shard1', type: 'quest', name: 'Осколок Пламени (I)', price: 0, desc: 'Тёплый и пульсирующий.' },
   { id: 'q_shard2', type: 'quest', name: 'Осколок Пламени (II)', price: 0, desc: 'Тёплый и пульсирующий.' },
   { id: 'q_page', type: 'quest', name: 'Страница летописи', price: 0, desc: 'Выцветшие строки старого короля.' },
-  { id: 'q_cat', type: 'quest', name: 'Лежебока Пушок', price: 0, desc: 'Мурчит.' },
+  { id: 'q_amulet', type: 'quest', name: 'Амулет Элоизы (находка)', price: 0, desc: 'Мокрый, но целый. Нужно вернуть владельцам.' },
 ]);
 
 // какие предметы продают торговцы (зависит от класса игрока: см. shopStock)

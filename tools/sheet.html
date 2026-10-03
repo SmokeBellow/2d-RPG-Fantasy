@@ -1,0 +1,35 @@
+<!doctype html><meta charset="utf-8"><title>sheet</title>
+<body style="margin:0;background:#2a2036"><canvas id="c"></canvas>
+<script type="module">
+import { playerSet, npcSet, enemyHumanSet, creatureFrames, itemIcon, catSprite, weaponSprite, NPC_LOOK_IDS } from '../js/sprites_chars.js';
+import { propSprites, treeSprite, bushSprite } from '../js/sprites_props.js';
+import { buildGround } from '../js/sprites_tiles.js';
+import { getMap } from '../js/maps.js';
+import { ITEMS } from '../js/defs.js';
+const c = document.getElementById('c'); c.width = 1400; c.height = 1000;
+const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+let px = 6, py = 6, rowH = 0;
+const S = 2;
+function put(cv, label) {
+  if (px + cv.width * S > c.width - 4) { px = 6; py += rowH + 6; rowH = 0; }
+  x.drawImage(cv, px, py, cv.width * S, cv.height * S);
+  px += cv.width * S + 4; rowH = Math.max(rowH, cv.height * S);
+}
+function nl() { px = 6; py += rowH + 8; rowH = 0; }
+for (const cls of ['warrior', 'mage', 'rogue']) { for (let t = 1; t <= 4; t++) { const s = playerSet(cls, t); put(s.d[0]); put(s.d[1]); put(s.s[1]); put(s.u[0]); } nl(); }
+for (const l of NPC_LOOK_IDS) { const s = npcSet(l); put(s.d[0]); put(s.s[0]); }
+put(catSprite(0)); nl();
+for (const t of ['goblin', 'goblinArcher', 'bandit', 'skeleton', 'husk', 'captain']) { const s = enemyHumanSet(t); put(s.d[0]); put(s.d[1]); put(s.s[1]); }
+nl();
+for (const t of ['slime', 'wolf', 'spider', 'bat', 'wraith', 'spitter']) { const f = creatureFrames(t); put(f.frames[0]); put(f.frames[1]); put(f.wind); }
+nl();
+for (const t of ['chieftain', 'king', 'lord']) { const f = creatureFrames(t); put(f.frames[0]); put(f.wind); }
+nl();
+for (const cls of ['warrior','mage','rogue']) for (let t=1;t<=5;t++) put(weaponSprite(cls,t).c);
+for (const id of Object.keys(ITEMS)) put(itemIcon(ITEMS[id]));
+nl();
+const P = propSprites();
+for (const k of Object.keys(P)) { const e = P[k]; const list = e.s ? [e.s] : e.frames ? [e.frames[0]] : Object.values(e).flat().filter((v) => v && v.width); for (const cv of list.slice(0, 3)) put(cv); }
+put(treeSprite(0,'forest'));put(treeSprite(1,'forest'));put(treeSprite(2,'forest'));put(treeSprite(0,'village'));put(bushSprite('forest',true));
+window.done = true;
+</script>

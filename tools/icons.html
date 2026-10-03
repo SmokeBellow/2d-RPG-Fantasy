@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#000">
+<script type="module">
+import { mk, rect, disc } from '../js/px.js';
+function emblem(size) {
+  const [c, x] = mk(48, 48);
+  // фон: тёмный квадрат с градиентом свечения
+  rect(x, 0, 0, 48, 48, '#1a1022');
+  for (let r = 22; r > 0; r--) { x.fillStyle = `rgba(232,116,42,${(22 - r) / 22 * 0.28})`; x.beginPath(); x.arc(24, 30, r, 0, 7); x.fill(); }
+  disc(x, 24, 32, 12, '#a8301a'); disc(x, 24, 30, 10, '#e8601c'); disc(x, 24, 28, 7, '#ffa030'); disc(x, 24, 26, 4, '#ffe070');
+  for (let r = 0; r < 24; r++) { const half = Math.round((1 - r / 24) * 9); rect(x, 24 - half + Math.round(Math.sin(r * 0.5) * 1.5), 24 - r, half * 2, 1, r < 7 ? '#ffe070' : r < 15 ? '#ffa030' : '#e8601c'); }
+  rect(x, 12, 40, 24, 3, '#6a5a78'); rect(x, 12, 40, 24, 1, '#9a8ab0'); rect(x, 8, 43, 32, 3, '#3a2a48');
+  const out = document.createElement('canvas'); out.width = out.height = size;
+  const o = out.getContext('2d'); o.imageSmoothingEnabled = false; o.drawImage(c, 0, 0, size, size);
+  return out;
+}
+window.icons = { 192: emblem(192).toDataURL(), 512: emblem(512).toDataURL(), 180: emblem(180).toDataURL() };
+window.done = true;
+</script>

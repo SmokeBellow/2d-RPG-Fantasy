@@ -54,3 +54,7 @@ export function weighted(rng, table) {
   for (const [v, w] of table) { r -= w; if (r <= 0) return v; }
   return table[table.length - 1][0];
 }
+
+const TAU = Math.PI * 2;
+export const normAng = (a) => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
+export const angDiff = (a, b) => Math.abs(normAng(a - b));
