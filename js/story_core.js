@@ -4,6 +4,8 @@
 // ['gold',50], ['xp',100], ['sp',1], ['shop','smith'], ['rest',20], ['choice','ключ','значение'], ['fight','chieftain','grok'], ['end','seal'] и т.п.
 // Обрабатываются в World.applyFx.
 
+import { ITEMS } from './defs.js';
+
 export const NPCS = {};
 export const QUESTS = {};
 export const NODES = {};
@@ -28,3 +30,6 @@ export const c = (label, go = null, fx = [], cond = null) => ({ label, go, fx, c
 // ready(s,id): квест выполнен по целям (подключается движком квестов, чтобы не плодить циклический импорт)
 export const H = {};
 export const ready = (s, id) => (H.isReady ? H.isReady(s, id) : false);
+
+// ITEM('q_x', { name, desc }) — регистрирует предмет (по умолчанию квестовый) прямо из файла сюжета
+export const ITEM = (id, o) => { ITEMS[id] = { id, type: 'quest', price: 0, ...o }; };

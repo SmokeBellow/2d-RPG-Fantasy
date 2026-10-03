@@ -151,6 +151,7 @@ function handle(events) {
       case 'omen': ui.toast(e.text, 'omen'); sound.sfx('omen'); break;
       case 'shop': game.openShop(e.id); break;
       case 'lik': ui.toast(e.text || 'Лик пробуждается', 'omen'); break;
+      case 'finale': { const plan = world.openNode('final_after'); if (plan) { ui.openDialogue(plan); input.reset(); } break; }
       case 'bossIntro2': ui.banner(e.name, 'Бой', true); break;
       case 'levelup':
         ui.toast(`Новый уровень: ${e.lvl}!`, 'good'); sound.sfx('fanfare');

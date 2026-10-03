@@ -2,6 +2,10 @@
 import { mk, rect, dot, rrect, ellipse, disc, line, outline, flipX, shade, mix, shadow } from './px.js';
 import { hash2 } from './util.js';
 
+import * as X2 from './looks_l2.js';
+import * as X3 from './looks_l3.js';
+import * as X45 from './looks_l45.js';
+import * as X6 from './looks_l6.js';
 const OUT = '#1d1420';
 const CW = 24, CH = 30;          // холст человечка; ступни на y = 28
 
@@ -294,6 +298,7 @@ const NPC_LOOKS = {
   kid: { skin: '#f4cda6', hairC: '#c88a3a', hair: 'spiky', top: ['#e8c068', '#c09840', '#f8dc88'], pants: ['#4a6a9a', '#34507a'], boots: '#5a3a22', legH: 4, torsoH: 6, hat: null, blush: '#e89a88', belt: null },
 };
 const npcCache = new Map();
+for (const X of [X2, X3, X45, X6]) Object.assign(NPC_LOOKS, X.NPC_LOOKS);
 export function npcSet(look) {
   if (npcCache.has(look)) return npcCache.get(look);
   const s = humanSet(NPC_LOOKS[look]);
@@ -553,6 +558,7 @@ Object.assign(ENEMY_HUMAN, {
   gladiator: { skin: '#c88858', hairC: '#2a1a10', top: ['#8a5a3a', '#6a4228', '#a87858'], pants: ['#5a4030', '#42302a'], boots: '#3a2818', hat: 'helm', hatCol: '#b8a068', plume: '#c83a3a', pads: true, padCol: '#b8a068', hold: 'sword', belt: '#5a3a22', sleeve: '#c88858' },
   smuggler: { skin: '#d8b090', hairC: '#2a2a3a', top: ['#3a4a5a', '#2a3644', '#566a7e'], pants: ['#2a2a38', '#1e1e2a'], boots: '#1a1a22', hat: 'bandana', hatCol: '#3a6a7a', mask: '#1a1a24', hold: 'dagger', belt: '#2a2018', cape: '#1e2a38' },
 });
+for (const X of [X2, X3, X45, X6]) Object.assign(ENEMY_HUMAN, X.ENEMY_HUMAN);
 const humanEnemyCache = new Map();
 export function enemyHumanSet(type) {
   if (humanEnemyCache.has(type)) return humanEnemyCache.get(type);
