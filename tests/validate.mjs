@@ -82,7 +82,7 @@ for (const id of QUEST_ORDER) {
   }
   for (const [it] of q.reward.items || []) for (const cls of Object.keys(CLASSES)) if (!itemSet.has(resolveItem(it, cls))) fail(`${id}: награда ${it} не существует для ${cls}`);
 }
-const FX_ARGS = { f: 1, 'q+': 1, 'q!': 1, god: 2, item: 2, take: 2, gold: 1, xp: 1, sp: 1, shop: 1, rest: 1, choice: 2, fight: 2, end: 1, respec: 0, heal: 0, toast: 1, travel: 1, refresh: 0, lik: 1, open: 1, goto: 1 };
+const FX_ARGS = { f: 1, uf: 1, 'q+': 1, 'q!': 1, god: 2, item: 2, take: 2, gold: 1, xp: 1, sp: 1, shop: 1, rest: 1, choice: 2, fight: 2, end: 1, respec: 0, heal: 0, toast: 1, travel: 1, refresh: 0, lik: 1, open: 1, goto: 1, duel: 2, stash: 0, unstash: 0 };
 const checkFx = (where, fx) => {
   for (const f of fx || []) {
     if (!(f[0] in FX_ARGS)) { fail(`${where}: неизвестный эффект ${f[0]}`); continue; }

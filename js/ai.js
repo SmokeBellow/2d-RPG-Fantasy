@@ -236,11 +236,17 @@ function bossUpdate(w, e, dt, d, visible) {
 
   // фазы
   const r = e.hp / e.maxHp;
-  const ph = def.ai === 'boss_king' ? (r < 0.3 ? 3 : r < 0.6 ? 2 : 1) : def.ai === 'boss_lord' ? (r < 0.3 ? 3 : r < 0.65 ? 2 : 1) : (r < 0.5 ? 2 : 1);
+  const ph = def.ai === 'boss_king' ? (r < 0.3 ? 3 : r < 0.6 ? 2 : 1) : def.ai === 'boss_lord' ? (r < 0.22 ? 4 : r < 0.47 ? 3 : r < 0.74 ? 2 : 1) : (r < 0.5 ? 2 : 1);
   if (ph > b.phase) {
     b.phase = ph;
     w.emit({ t: 'shake', v: 5 }); w.emit({ t: 'sfx', n: 'roar' });
-    w.emit({ t: 'toast', text: `${def.title || def.name} в ярости!`, kind: 'warn' });
+    if (def.ai === 'boss_lord') {
+      const say = { 2: ['Он встаёт. Свет из раны становится ярче.', 'Ты пришёл не за этим.'], 3: ['Излучение растёт. Эхо отзывается на зов.', 'Слышишь? Это они.'], 4: ['Маяки гаснут. Сквозь рану идёт всё сразу.', 'Теперь без подсказок.'] }[ph];
+      w.emit({ t: 'toast', text: say[0], kind: 'warn' });
+      w.emit({ t: 'text', x: e.x, y: e.y - 40, text: say[1], col: '#e8d8a8' });
+      w.emit({ t: 'nova', x: e.x, y: e.y, r: 70, col: ph === 4 ? '#ffe0a0' : '#c8a0ff' });
+      b.flags.enrage = ph >= 3;
+    } else w.emit({ t: 'toast', text: `${def.title || def.name} в ярости!`, kind: 'warn' });
     b.mode = 'move'; b.cd = 0.6; b.steps = []; b.dash = null;
   }
   e.pose = b.mode === 'attack' ? 'wind' : 'move';
@@ -258,7 +264,7 @@ function bossUpdate(w, e, dt, d, visible) {
   if (b.mode === 'attack') {
     b.st += dt;
     for (const s of b.steps) if (!s.done && b.st >= s.at) { s.done = true; s.fn(); }
-    if (b.st >= b.dur) { b.mode = 'move'; b.cd = (b.phase >= 3 ? 0.7 : b.phase === 2 ? 1.0 : 1.4) + Math.random() * 0.6; }
+    if (b.st >= b.dur) { b.mode = 'move'; b.cd = (b.phase >= 4 ? 0.5 : b.phase === 3 ? 0.7 : b.phase === 2 ? 1.0 : 1.4) + Math.random() * 0.6; }
     return;
   }
   // движение между атаками
@@ -404,51 +410,80 @@ function startBossAttack(w, e, d) {
       script(w, e, 1.4, [0.1, 0.35, 0.6, 0.85].map((at) => [at, () => { w.shoot({ x: e.x, y: e.y - 4, ang: A(), speed: 125, r: 3.5, dmg: e.atk * 0.8, kind: 'skull', life: 3 }); w.emit({ t: 'sfx', n: 'shoot' }); }]));
     } else {
       b.flags.lastSummon = b.n;
-      script(w, e, 1.3, [[0.3, () => { summon(w, e, 'skeleton', 3, e.lvl - 2); w.emit({ t: 'shake', v: 3 }); w.emit({ t: 'nova', x: e.x, y: e.y, r: 50, col: '#a08ae0' }); }]]);
+      script(w, e, 1.3, [[0.3, () => { summon(w, e, e.def.minion || 'skeleton', 3, e.lvl - 2); w.emit({ t: 'shake', v: 3 }); w.emit({ t: 'nova', x: e.x, y: e.y, r: 50, col: '#a08ae0' }); }]]);
     }
     return;
   }
 
-  // ---------- Скверный Владыка
+  // ---------- Последний Прежний: четыре фазы
   if (type === 'boss_lord') {
     const ph = b.phase;
     const alive = w.enemies.filter((o) => o.alive && o.summoned).length;
+    // излучение слабее на каждый восстановленный маяк; в фазе 4 маяки гаснут, и подсказки (предупреждающие конусы) исчезают
+    const beacons = (w.s.flags.beacon1 ? 1 : 0) + (w.s.flags.beacon2 ? 1 : 0) + (w.s.flags.beacon3 ? 1 : 0);
+    const rad = 1 - 0.07 * beacons;
+    const hint = ph >= 4 ? 0.4 : 1;
     let name;
-    if (ph >= 2 && !alive && (!b.flags.lastSummon || b.n - b.flags.lastSummon > 6)) name = 'summon';
-    else if (ph === 3) name = pick([['bolts', 2], ['tendrils', 3], ['spiral', 3], ['dash', 2], ['burst', 3], ['gap', 3]]);
-    else if (ph === 2) name = pick([['bolts', 3], ['tendrils', 3], ['spiral', 3], ['dash', 2], ['burst', 2]]);
+    if (ph >= 2 && !alive && (!b.flags.lastSummon || b.n - b.flags.lastSummon > 5)) name = 'summon';
+    else if (ph === 4) name = pick([['wave', 4], ['tendrils', 3], ['spiral', 3], ['dash', 2], ['burst', 2], ['gap', 3], ['pulse', 3]]);
+    else if (ph === 3) name = pick([['bolts', 2], ['tendrils', 3], ['spiral', 2], ['dash', 2], ['burst', 3], ['gap', 3], ['wave', 3]]);
+    else if (ph === 2) name = pick([['bolts', 3], ['tendrils', 3], ['spiral', 3], ['dash', 2], ['burst', 2], ['wave', 2]]);
     else name = d < 60 ? pick([['burst', 4], ['bolts', 3], ['tendrils', 3]]) : pick([['bolts', 4], ['tendrils', 4], ['dash', 2]]);
-    if (name === b.last && name !== 'summon') name = pick([['bolts', 3], ['tendrils', 3], ['spiral', 2], ['burst', 2]]);
+    if (name === b.last && name !== 'summon') name = pick([['bolts', 3], ['tendrils', 3], ['spiral', 2], ['burst', 2], ['wave', 2]]);
     b.last = name;
-    const fan = () => { const a = A(); for (let i = -1; i <= 1; i++) w.shoot({ x: e.x, y: e.y - 6, ang: a + i * 0.24, speed: 110, r: 3.5, dmg: e.atk * 0.8, kind: 'blight', life: 3 }); w.emit({ t: 'sfx', n: 'shoot' }); };
+    const fan = () => { const a = A(); for (let i = -1; i <= 1; i++) w.shoot({ x: e.x, y: e.y - 6, ang: a + i * 0.24, speed: 110, r: 3.5, dmg: e.atk * 0.8 * rad, kind: 'blight', life: 3 }); w.emit({ t: 'sfx', n: 'shoot' }); };
+    // кольцо излучения с окном: окно по направлению на игрока, шире на ранних фазах
+    const ringGap = (n, gapA, gap, speed, off = 0) => () => {
+      for (let i = 0; i < n; i++) { const a = off + (i / n) * TAU; if (angDiff(a, gapA) < gap) continue; w.shoot({ x: e.x, y: e.y - 6, ang: a, speed, r: 3.5, dmg: e.atk * 0.75 * rad, kind: 'blight', life: 5.5 }); }
+      w.emit({ t: 'sfx', n: 'shoot' }); w.emit({ t: 'nova', x: e.x, y: e.y, r: 30, col: '#c8a0ff' });
+    };
     if (name === 'bolts') {
       script(w, e, 1.5, ph >= 2 ? [[0.2, fan], [0.7, fan], [1.2, fan]] : [[0.3, fan], [0.9, fan]]);
     } else if (name === 'tendrils') {
-      const n = ph === 3 ? 6 : 4;
+      const n = ph >= 3 ? 6 : 4;
       const steps = [[0, () => aimTele(w, e, { x: p.x, y: p.y, r: 22, dur: 0.9, dmg: e.atk * 1.2, kind: 'tendril' })]];
       for (let i = 0; i < n; i++) steps.push([0.15 + i * 0.18, () => aimTele(w, e, { x: p.x + rnd(-52, 52), y: p.y + rnd(-52, 52), r: 20, dur: 0.85, dmg: e.atk * 1.1, kind: 'tendril' })]);
       script(w, e, 1.2 + n * 0.18, steps);
     } else if (name === 'spiral') {
       const base = Math.random() * TAU;
       const steps = [];
-      const N = ph === 3 ? 30 : 22;
-      for (let i = 0; i < N; i++) steps.push([0.2 + i * 0.07, () => { w.shoot({ x: e.x, y: e.y - 6, ang: base + i * 0.48, speed: 78, r: 3.5, dmg: e.atk * 0.7, kind: 'blight', life: 4.5 }); if (i % 6 === 0) w.emit({ t: 'sfx', n: 'shoot' }); }]);
+      const N = ph >= 3 ? 30 : 22;
+      for (let i = 0; i < N; i++) steps.push([0.2 + i * 0.07, () => { w.shoot({ x: e.x, y: e.y - 6, ang: base + i * 0.48, speed: 78, r: 3.5, dmg: e.atk * 0.7 * rad, kind: 'blight', life: 4.5 }); if (i % 6 === 0) w.emit({ t: 'sfx', n: 'shoot' }); }]);
       script(w, e, 0.4 + N * 0.07, steps);
     } else if (name === 'dash') {
       const a = A(); e.face = a;
       script(w, e, 1.5, [
-        [0, () => aimTele(w, e, { shape: 'cone', x: e.x, y: e.y, r: 170, ang: a, arc: 0.3, dur: 0.7, dmg: 0, kind: 'warn' })],
-        [0.7, () => { b.dash = { ang: a, spd: 270, t: 0.5, dmg: e.atk * 1.3, hit: false, kb: 130 }; w.emit({ t: 'sfx', n: 'growl' }); }],
+        [0, () => aimTele(w, e, { shape: 'cone', x: e.x, y: e.y, r: 170, ang: a, arc: 0.3, dur: 0.7 * hint, dmg: 0, kind: 'warn' })],
+        [0.7 * hint, () => { b.dash = { ang: a, spd: 270, t: 0.5, dmg: e.atk * 1.3, hit: false, kb: 130 }; w.emit({ t: 'sfx', n: 'growl' }); }],
       ]);
     } else if (name === 'burst') {
       script(w, e, 1.5, [[0, () => { aimTele(w, e, { x: e.x, y: e.y, r: 58, dur: 1.0, dmg: e.atk * 1.5, kind: 'shock', kb: 150 }); w.emit({ t: 'sfx', n: 'warn' }); }]]);
     } else if (name === 'gap') {
       const gapA = A();
-      const ring = (off) => () => { const n = 22; for (let i = 0; i < n; i++) { const a = off + (i / n) * TAU; if (angDiff(a, gapA) < 0.4) continue; w.shoot({ x: e.x, y: e.y - 6, ang: a, speed: 72, r: 3.5, dmg: e.atk * 0.8, kind: 'blight', life: 5 }); } w.emit({ t: 'sfx', n: 'shoot' }); };
-      script(w, e, 1.6, [[0.2, ring(0)], [0.9, ring(0.14)]]);
+      script(w, e, 1.6, [[0.2, ringGap(22, gapA, 0.4, 72)], [0.9, ringGap(22, gapA, 0.4, 72, 0.14)]]);
+    } else if (name === 'wave') {
+      // волны излучения: три кольца подряд, окно каждый раз смещается; в фазе 4 волн четыре и они быстрее
+      const waves = ph >= 4 ? 4 : 3, sp = ph >= 4 ? 84 : 66, gapA = A();
+      const steps = [[0, () => w.emit({ t: 'sfx', n: 'warn' })]];
+      for (let i = 0; i < waves; i++) steps.push([0.3 + i * 0.75, ringGap(26, gapA + i * 1.1, ph >= 4 ? 0.34 : 0.42, sp)]);
+      script(w, e, 0.6 + waves * 0.75, steps);
+    } else if (name === 'pulse') {
+      // фаза 4: удар по месту, затем волна без предупреждения
+      const gapA = A();
+      script(w, e, 2.0, [
+        [0, () => { aimTele(w, e, { x: e.x, y: e.y, r: 64, dur: 0.8, dmg: e.atk * 1.5, kind: 'shock', kb: 160 }); w.emit({ t: 'sfx', n: 'warn' }); }],
+        [0.95, ringGap(28, gapA, 0.32, 90)],
+        [1.4, () => { aimTele(w, e, { x: p.x, y: p.y, r: 24, dur: 0.6, dmg: e.atk * 1.1, kind: 'tendril' }); aimTele(w, e, { x: p.x + rnd(-40, 40), y: p.y + rnd(-40, 40), r: 22, dur: 0.6, dmg: e.atk * 1.1, kind: 'tendril' }); }],
+      ]);
     } else {
+      // призыв эха: эхо-солдаты и призраки, до четырёх за раз
       b.flags.lastSummon = b.n;
-      script(w, e, 1.4, [[0.3, () => { summon(w, e, 'husk', 2, e.lvl - 3); w.emit({ t: 'shake', v: 3 }); w.emit({ t: 'nova', x: e.x, y: e.y, r: 60, col: '#9a5ae0' }); }]]);
+      script(w, e, 1.4, [[0.3, () => {
+        summon(w, e, ph >= 3 ? 'wraith' : 'echoSoldier', ph >= 3 ? 3 : 2, e.lvl - 3);
+        if (ph >= 4) summon(w, e, 'echoSoldier', 1, e.lvl - 3);
+        w.emit({ t: 'shake', v: 3 }); w.emit({ t: 'nova', x: e.x, y: e.y, r: 60, col: '#9a5ae0' });
+        w.emit({ t: 'text', x: e.x, y: e.y - 40, text: 'Они всё ещё здесь.', col: '#e8d8a8' });
+      }]]);
     }
   }
 }

@@ -99,7 +99,7 @@ export class World {
   }
 
   npcVisible(n) {
-    const f = this.s.flags;
+    const f = new Proxy(this.s.flags, { get: (o, k) => o[k] || k === 'cls_' + this.s.cls });   // флаг cls_<класс> всегда виден своему классу
     if (n.showIf && !(Array.isArray(n.showIf) ? n.showIf.every((k) => f[k]) : f[n.showIf])) return false;
     if (n.hideIf && (Array.isArray(n.hideIf) ? n.hideIf.some((k) => f[k]) : f[n.hideIf])) return false;
     return true;
@@ -111,6 +111,13 @@ export class World {
     for (const n of map.npcs) {
       if (!have.has(n.id) && this.npcVisible(n)) this.npcs.push({ ...n, px: (n.x + 0.5) * TILE, py: (n.y + 0.5) * TILE, t: 0 });
     }
+  }
+
+  // двери и барьеры открываются и по флагам, поставленным диалогом (не только рычагом)
+  syncDoors() {
+    let changed = false;
+    for (const d of this.doors || []) { const o = d.opens.every((f) => this.s.flags[f]); if (o !== d.open) { d.open = o; changed = true; } }
+    if (changed) this.applyDoors();
   }
 
   applyDoors() {
@@ -272,8 +279,24 @@ export class World {
     this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 8, v: dmg, crit, who: 'e', big: dmg > 30 });
     this.emit({ t: 'hit', x: e.x, y: e.y - 4, ang, crit });
     this.emit({ t: 'sfx', n: crit ? 'crit' : 'hit' });
+    if (e.yields && e.hp <= e.maxHp * 0.2) { this.yieldEnemy(e); return true; }   // дуэль: соперник сдаётся
     if (e.hp <= 0) this.killEnemy(e);
     return true;
+  }
+
+  // дуэль до сдачи (эффект 'duel'): враг складывает оружие и снова становится NPC, ставится флаг y_<id>
+  yieldEnemy(e) {
+    e.alive = false; e.state = 'dead';
+    this.enemies = this.enemies.filter((q) => q !== e);
+    this.s.flags['y_' + e.unique] = true;
+    this.npcs = this.npcs.filter((q) => q.id !== e.unique);
+    const base = this.map.npcs.find((q) => q.id === e.unique);
+    if (base) this.npcs.push({ ...base, px: e.x, py: e.y, t: 0 });
+    if (e.def.boss) { this.emit({ t: 'boss', e: null }); this.bossE = null; }
+    this.teles.length = 0; this.projs = this.projs.filter((q) => q.from === 'p');
+    this.emit({ t: 'toast', text: `${e.def.name} сдаётся`, kind: 'good' });
+    this.emit({ t: 'shake', v: 3 });
+    this.emit({ t: 'quest', id: null, why: 'flag' });
   }
 
   healPlayer(n, quiet = false) {
@@ -1041,7 +1064,7 @@ export class World {
     for (const fx of list || []) {
       const [op, a, b, c] = fx;
       switch (op) {
-        case 'f': s.flags[a] = true; this.emit({ t: 'quest', id: null, why: 'flag' }); break;
+        case 'f': s.flags[a] = true; this.syncDoors(); this.emit({ t: 'quest', id: null, why: 'flag' }); break;
         case 'uf': delete s.flags[a]; break;
         case 'q+':
           if (acceptQuest(s, a)) {
@@ -1082,6 +1105,29 @@ export class World {
           const e = this.spawnEnemy(a, n.px, n.py, c || 5, b);
           e.aggro = true;
           this.emit({ t: 'bossIntro2', name: ENEMIES[a].title || ENEMIES[a].name });
+          break;
+        }
+        case 'duel': {
+          // [duel, тип врага, id NPC, уровень]: как fight, но при 20% здоровья соперник сдаётся (флаг y_<id>), убить его уже нельзя в бою
+          const n = this.npcs.find((q) => q.id === b);
+          if (!n) break;
+          this.npcs = this.npcs.filter((q) => q !== n);
+          const e = this.spawnEnemy(a, n.px, n.py, c || 5, b, { yields: true });
+          e.aggro = true;
+          this.emit({ t: 'bossIntro2', name: ENEMIES[a].title || ENEMIES[a].name });
+          break;
+        }
+        case 'stash': {
+          // убрать зелья в «депозит» (честный бой); 'unstash' вернуть
+          s.stash = s.stash || {};
+          for (const id of Object.keys(s.inv)) if (ITEMS[id] && ITEMS[id].type === 'potion') { s.stash[id] = (s.stash[id] || 0) + s.inv[id]; delete s.inv[id]; }
+          this.emit({ t: 'stats' });
+          break;
+        }
+        case 'unstash': {
+          for (const [id, k] of Object.entries(s.stash || {})) addItem(s, id, k);
+          s.stash = {};
+          this.emit({ t: 'stats' });
           break;
         }
         case 'beacon': break;
