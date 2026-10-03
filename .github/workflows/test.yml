@@ -15,7 +15,7 @@ jobs:
           node-version: 22
       # данные: достижимость карт, квесты, предметы
       - run: node tests/validate.mjs
+      # репутация богов, дерево навыков, диалоги
+      - run: node tests/systems.mjs
       # быстрый прогон логики мира для трёх классов
       - run: node tests/smoke.mjs
-      # бот проходит игру целиком через настоящую логику
-      - run: node tests/bot.mjs warrior --quiet

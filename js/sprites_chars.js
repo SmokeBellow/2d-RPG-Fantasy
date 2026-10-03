@@ -302,7 +302,7 @@ const npcCache = new Map();
 for (const X of [X2, X3, X4, X5, X6]) Object.assign(NPC_LOOKS, X.NPC_LOOKS);
 export function npcSet(look) {
   if (npcCache.has(look)) return npcCache.get(look);
-  const s = humanSet(NPC_LOOKS[look]);
+  const s = humanSet(NPC_LOOKS[look] || ENEMY_HUMAN[look]);
   npcCache.set(look, s);
   return s;
 }

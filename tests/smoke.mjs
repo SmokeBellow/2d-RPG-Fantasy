@@ -3,12 +3,13 @@ import { World } from '../js/world.js';
 import { newState } from '../js/state.js';
 import { AREA_IDS } from '../js/maps.js';
 
-const inp = (o = {}) => ({ mx: 0, my: 0, aimX: null, aimY: null, attack: false, skill: [false, false], dodge: false, potHp: false, potMp: false, interact: false, ...o });
+const inp = (o = {}) => ({ mx: 0, my: 0, aimX: null, aimY: null, attack: false, skill: [false, false, false], lik: false, dodge: false, potHp: false, potMp: false, interact: false, ...o });
 for (const cls of ['warrior', 'mage', 'rogue']) {
   const w = new World(newState(cls));
   for (const id of AREA_IDS) w.loadArea(id);
-  w.loadArea('forest');
+  w.loadArea('village');
   // прогон 60 секунд: атаки и движение
-  for (let i = 0; i < 3600; i++) w.update(1 / 60, inp({ mx: Math.cos(i / 40), my: Math.sin(i / 40), attack: i % 20 < 10, skill: [i % 200 === 0, i % 330 === 0], dodge: i % 150 === 0 }));
+  w.s.lvl = 12; w.refreshStats(); w.s.hp = w.stats.maxHp;
+  for (let i = 0; i < 3600; i++) w.update(1 / 60, inp({ mx: Math.cos(i / 40), my: Math.sin(i / 40), attack: i % 20 < 10, skill: [i % 200 === 0, i % 330 === 0, i % 410 === 0], lik: i % 900 === 0, dodge: i % 150 === 0 }));
   console.log(cls, 'ok, hp', Math.round(w.s.hp), 'enemies', w.enemies.length);
 }

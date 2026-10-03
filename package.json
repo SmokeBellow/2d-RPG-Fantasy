@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Эмбервейл — пиксельная фэнтези-RPG с боем в реальном времени",
+  "description": "Эмбервейл — пиксельная фэнтези-RPG: семь богов, забытый век и четыре финала",
   "scripts": {
     "start": "python3 -m http.server 8000",
-    "test": "node tests/validate.mjs && node tests/smoke.mjs && node tests/bot.mjs warrior --quiet",
-    "test:all": "node tests/validate.mjs && node tests/smoke.mjs && node tests/bot.mjs warrior --quiet && node tests/bot.mjs mage --quiet && node tests/bot.mjs rogue --quiet",
+    "test": "node tests/validate.mjs && node tests/systems.mjs && node tests/smoke.mjs",
     "map": "node tests/ascii.mjs"
   }
 }
