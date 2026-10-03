@@ -176,7 +176,8 @@ function frame(now) {
   if (screen !== 'game' || !world) {
     ui.animateMenu(dt, screen);
   } else {
-    const blocked = ui.blocking || transitioning || paused;
+    const portrait = document.body.classList.contains('touch') && window.innerHeight > window.innerWidth * 1.05;
+    const blocked = ui.blocking || transitioning || paused || portrait;
     input.enabled = !blocked && !world.p.dead;
     const cam = { x: renderer.cx || 0, y: renderer.cy || 0 };
     const inp = input.poll(cam);

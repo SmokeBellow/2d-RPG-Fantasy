@@ -24,5 +24,6 @@ for (let i = 0; i < steps; i++) {
   inp.skill = [q.get('skill') && i % 60 === 5, false];
   w.update(1 / 60, inp); r.consume(w.drain()); r.draw(w, 1 / 60);
 }
+window.__scene = { w, r, inp };
 window.done = true;
 </script>

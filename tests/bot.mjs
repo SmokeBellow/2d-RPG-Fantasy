@@ -19,6 +19,7 @@ const DT = 1 / 30;
 const world = new World(newState(cls), rng);
 const w = world;
 let simT = 0, deaths = 0, done = false;
+let bossT0 = null, bossMin = 1, bossName = '';
 const log = (...a) => { if (!quiet) console.log(`[${String(Math.floor(simT / 60)).padStart(3)}м L${String(w.s.lvl).padStart(2)}]`, ...a); };
 const inp = () => ({ mx: 0, my: 0, aimX: null, aimY: null, attack: false, skill: [false, false], dodge: false, potHp: false, potMp: false, interact: false });
 
@@ -36,6 +37,8 @@ function pump() {
       log('☠ смерть #' + deaths + ' в ' + w.area + ' рядом: ' + near + ' pos ' + (w.p.x / 16 | 0) + ',' + (w.p.y / 16 | 0));
     }
     else if (e.t === 'victory') done = true;
+    else if (e.t === 'bossIntro') { bossT0 = simT; bossMin = 1; bossName = e.name; }
+    else if (e.t === 'boss' && !e.e && bossT0 != null) { log(`  босс «${bossName}»: ${(simT - bossT0).toFixed(0)} с, минимум здоровья ${Math.round(bossMin * 100)}%`); bossT0 = null; }
     else if (e.t === 'levelup') log('★ уровень', e.lvl);
     else if (e.t === 'questDone') log('✔ квест выполнен:', QUESTS[e.id].title);
     else if (e.t === 'toast' && /Новое задание|Перековано|Маяк|Получено|повержен/.test(e.text)) log('·', e.text);
@@ -43,6 +46,7 @@ function pump() {
 }
 function tick(i) {
   simT += DT;
+  if (bossT0 != null) bossMin = Math.min(bossMin, w.s.hp / w.stats.maxHp);
   if (process.env.DEBUG3 && simT > 1441 && simT < 1442) console.log(`   f t=${simT.toFixed(2)} in=${JSON.stringify(i && { mx: +(i.mx || 0).toFixed(2), my: +(i.my || 0).toFixed(2), a: i.attack, d: i.dodge })} p=(${w.p.x | 0},${w.p.y | 0}) inv=${w.p.inv.toFixed(2)} act=${w.p.act && w.p.act.kind} dodge=${!!w.p.dodge} cdAtk=${w.p.cdAtk.toFixed(2)} gob=${w.enemies.filter((o) => o.alive && o.aggro && dist(o.x, o.y, w.p.x, w.p.y) < 40).map((o) => o.type + ':' + o.state + ':' + o.t.toFixed(2) + ':' + o.cd.toFixed(2) + ':' + (o.hp | 0)).join('|')}`);
   const input = i || inp();
   w.update(DT, input);
@@ -253,8 +257,10 @@ function acceptAvailable(npcId) {
 function pickups() {
   if (process.env.DEBUG) console.log('  pickups:', w.pickups.map((q) => `${q.id}@${q.x | 0},${q.y | 0}`).join(' '), 'player', w.p.x | 0, w.p.y | 0);
   for (let n = 0; n < 30 && w.pickups.length; n++) {
-    const q = w.pickups.sort((a, b) => dist(a.x, a.y, w.p.x, w.p.y) - dist(b.x, b.y, w.p.x, w.p.y))[0];
-    if (dist(q.x, q.y, w.p.x, w.p.y) > 160) break;
+    const isQ = (q) => ITEMS[q.id] && ITEMS[q.id].type === 'quest';
+    const list = w.pickups.filter((q) => isQ(q) || dist(q.x, q.y, w.p.x, w.p.y) < 160).sort((a, b) => (isQ(b) - isQ(a)) || dist(a.x, a.y, w.p.x, w.p.y) - dist(b.x, b.y, w.p.x, w.p.y));
+    const q = list[0];
+    if (!q) break;
     try { walkTo(q.x, q.y, 6, { noFight: true }); } catch (e) { break; }
     for (let k = 0; k < 12; k++) tick(inp());
   }
@@ -262,10 +268,13 @@ function pickups() {
 
 function fightEnemy(e, maxSec = 180) {
   const t0 = simT;
+  const hp0 = w.s.hp, pot0 = count(w.s, 'p_hp1') + count(w.s, 'p_hp2'), max0 = w.stats.maxHp;
+  let minHp = hp0;
   let dbgT = 0;
   while (e.alive && simT - t0 < maxSec) {
     const p = w.p;
     const d = dist(p.x, p.y, e.x, e.y);
+    minHp = Math.min(minHp, w.s.hp);
     if (process.env.DEBUG && simT - dbgT > 2) { dbgT = simT; console.log(`  dbg t=${simT.toFixed(1)} p=(${p.x | 0},${p.y | 0}) e=${e.type}(${e.x | 0},${e.y | 0}) st=${e.state} aggro=${e.aggro} hp=${e.hp | 0}/${e.maxHp} d=${d | 0} php=${w.s.hp | 0} aggro=[${w.enemies.filter((o) => o.alive && o.aggro && dist(o.x, o.y, p.x, p.y) < 90).map((o) => o.type + '@' + (dist(o.x, o.y, p.x, p.y) | 0) + ':' + o.state).join(',')}] nav.wp=${nav.wp}/${nav.path && nav.path.length} wp=${nav.path && nav.path[nav.wp] && nav.path[nav.wp].map((v) => v | 0)}`); }
     const engageD = RANGED ? 120 : 60;
     if (d > engageD && !w.enemies.some((o) => o.alive && o.aggro && dist(o.x, o.y, p.x, p.y) < 90)) {
@@ -274,10 +283,11 @@ function fightEnemy(e, maxSec = 180) {
       if (s2.hp < w.stats.maxHp * 0.3 && (count(s2, 'p_hp1') || count(s2, 'p_hp2'))) i.potHp = true;
       tick(i);
     } else {
-      combatFrame(e.aggro || d < 70 ? null : e);
+      if (!combatFrame(null)) tick(followStep(e.x, e.y));
       if (!e.aggro && d < 70) e.aggro = true;
     }
   }
+  if (!e.alive && e.boss) log(`  бой с боссом ${e.type}: ${(simT - t0).toFixed(0)} с, здоровье мин. ${Math.round(minHp / max0 * 100)}% (начало ${Math.round(hp0 / max0 * 100)}%), зелий выпито ${pot0 - (count(w.s, 'p_hp1') + count(w.s, 'p_hp2'))}, ур. ${w.s.lvl}`);
   if (e.alive) throw new Error(`враг ${e.type} не побеждён за ${maxSec} с`);
 }
 

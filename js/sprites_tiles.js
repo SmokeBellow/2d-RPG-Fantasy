@@ -23,19 +23,32 @@ const PAL = {
 const cacheTile = new Map();
 
 // пиксельная заливка шумом из палитры p (4 тона), s — случайное зерно
+const rgbCache = new Map();
+function rgbOf(hex) {
+  let v = rgbCache.get(hex);
+  if (!v) { const n = parseInt(hex.slice(1), 16); v = [(n >> 16) & 255, (n >> 8) & 255, n & 255]; rgbCache.set(hex, v); }
+  return v;
+}
+let scratchImg = null;
+// пиксельная заливка шумом из палитры p (4 тона): пишем прямо в ImageData, это на порядок быстрее fillRect
 function noiseFill(x, px, py, p, seed, spread = 0.12, baseArg = 1) {
+  if (!scratchImg) scratchImg = x.createImageData(TILE, TILE);
+  const d = scratchImg.data;
   const bf = typeof baseArg === 'function' ? baseArg : null;
   let bc = null;
   if (bf) { bc = []; for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) bc[j * 8 + i] = bf(i * 2, j * 2); }
+  const cols = p.map(rgbOf);
   for (let j = 0; j < TILE; j++) for (let i = 0; i < TILE; i++) {
     const n = hash2(px + i, py + j, seed);
     const base = bf ? bc[(j >> 1) * 8 + (i >> 1)] : baseArg;
     let k = base;
     if (n < spread) k = base - 1; else if (n > 1 - spread) k = base + 1;
     if (n < spread * 0.25) k = base - 1;
-    x.fillStyle = p[Math.max(0, Math.min(3, k))];
-    x.fillRect(i, j, 1, 1);
+    const c = cols[Math.max(0, Math.min(3, k))];
+    const o = (j * TILE + i) * 4;
+    d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
   }
+  x.putImageData(scratchImg, 0, 0);
 }
 
 function grassTile(x, wx, wy, forest) {
@@ -211,10 +224,10 @@ export function buildGround(map, theme) {
   const get = (tx, ty) => (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h ? T.WALL : map.tiles[ty * map.w + tx]);
   const isWater = (t) => t === T.WATER || t === T.DEEP;
   const isWall = (t) => t === T.CWALL || t === T.BWALL || t === T.WALL || t === T.ROCK;
-  const [t0] = mk(TILE, TILE);
+  const [tc, tcx] = mk(TILE, TILE);
   for (let ty = 0; ty < map.h; ty++) for (let tx = 0; tx < map.w; tx++) {
     const t = get(tx, ty);
-    const [tc, tcx] = mk(TILE, TILE);
+    tcx.clearRect(0, 0, TILE, TILE);
     const wx = tx * TILE, wy = ty * TILE;
     const nbOf = (pred) => [pred(get(tx, ty - 1)), pred(get(tx + 1, ty)), pred(get(tx, ty + 1)), pred(get(tx - 1, ty))];
     switch (t) {
