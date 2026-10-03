@@ -63,7 +63,7 @@ export function valley_fields() {
   b.prop('monolith', 83, 35, { use: 'page', id: 'pg_f_mono', title: 'Камень Вспоминающих', text: 'Двадцать семь имён, вырезанных разными руками. Двадцать шестое стёрто стамеской, на её месте выбито: «Помним, что забыли». Под камнем кто-то оставил хлеб.', fx: [] });
   b.npc('sael', 77, 43);
   b.npc('dorn', 74, 44);
-  b.npc('pilgrim_b', 80, 43);
+  b.npc('pilgrim_b', 80, 43, { hideIf: 'proof_council' });
   b.npc('pilgrim_c', 82, 33, { showIf: 'proof_remembering' });
   b.zone('pilgrim_camp', 69, 36, 16, 14);
 
@@ -308,7 +308,7 @@ export function abbey() {
   b.prop('table', 48, 37, { use: 'page', id: 'pg_ab4', title: 'Записка в келье молчания', text: 'Тому, кто придёт после: мы забыли не потому, что нас заставили. Мы забыли, потому что помнить было нечем. Что бы вам ни рассказали про войну, помните, что рассказывающие всегда были на чьей-то стороне. Мы были на стороне тишины.' });
 
   // люди
-  b.npc('anselm', 30, 24);
+  b.npc('prior', 30, 24);
   b.npc('mav', 51, 27);
   b.npc('tomas', 8, 27);
   b.npc('brother_pol', 9, 38);
