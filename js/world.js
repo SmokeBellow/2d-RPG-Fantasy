@@ -826,7 +826,7 @@ export class World {
         break;
       }
       case 'beacon': {
-        if (s.flags.beacon_lit) { this.emit({ t: 'text', text: 'Маяк ярко горит. Тёплый свет разгоняет тьму.', panel: true, name: 'Маяк' }); break; }
+        if (s.flags.beacon_lit) { this.emit({ t: 'text', text: 'Маяк горит ровно. Слишком ровно для огня, который ничем не питается.', panel: true, name: 'Маяк' }); break; }
         if (s.flags.forged && s.quests.m6 && s.quests.m6.state === 'active') {
           s.flags.beacon_lit = true;
           this.emit({ t: 'beacon' });
@@ -837,7 +837,7 @@ export class World {
         } else if (s.quests.m6 && s.quests.m6.state === 'active') {
           this.emit({ t: 'text', text: 'Маяк холоден. Сначала нужно перековать осколки: Торвальд ждёт в кузнице.', panel: true, name: 'Маяк' });
         } else {
-          this.emit({ t: 'text', text: 'Холодный камень. Пламя в чаше давно погасло.', panel: true, name: 'Маяк' });
+          this.emit({ t: 'text', text: 'Чаша пуста. На краю следы копоти, расчищенные чьей-то рукой, и не один раз.', panel: true, name: 'Маяк' });
         }
         break;
       }

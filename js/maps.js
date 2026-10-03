@@ -193,8 +193,8 @@ function buildVillage() {
   b.prop('beacon', 36, 9, { id: 'beacon', use: 'beacon' });  // маяк Тихого Брода
   b.prop('shrine', 31, 26, { id: 'shrine_village', use: 'shrine', name: 'Алтарь Огня' });
   b.prop('barrel', 20, 25); b.prop('barrel', 19, 27); b.prop('crate', 47, 14); b.prop('barrel', 48, 14);
-  b.prop('sign', 34, 6, { use: 'sign', text: 'Север — Шёпотный лес. Ходить поодиночке не советуем.' });
-  b.prop('sign', 50, 21, { use: 'sign', text: 'Луг. Слизни безобидны, пока не прыгнут.' });
+  b.prop('sign', 34, 6, { use: 'sign', text: 'Север — Шёпотный лес. Дозор не выходит за черту после заката. Не спрашивайте почему.' });
+  b.prop('sign', 50, 21, { use: 'sign', text: 'Восточный луг. После Серой зимы земля здесь не родит. Слизь выходит из неё сама.' });
   b.prop('statue', 29, 6);
   b.prop('cart', 24, 25);
 
@@ -272,8 +272,8 @@ function buildForest() {
   // врата склепа и святилище
   b.prop('cryptgate', 45, 6, { id: 'cryptgate' });
   b.prop('shrine', 46, 17, { id: 'shrine_forest', use: 'shrine', name: 'Лесной алтарь' });
-  b.prop('obelisk', 42, 14, { use: 'sign', text: 'Здесь король Эмбер зажёг первое Пламя. Пока оно горит, Скверна спит.' });
-  b.prop('obelisk', 52, 14, { use: 'sign', text: 'Пламя меркнет. Кто станет новым хранителем?' });
+  b.prop('obelisk', 42, 14, { use: 'sign', text: 'Здесь Эмбер Сорен принёс клятву и зажёг Пламя. Имена тех, кто стоял рядом, стёрты намеренно.' });
+  b.prop('obelisk', 52, 14, { use: 'sign', text: '«Пламя горит, пока есть тот, кто согласен». Остальное высечено глубже и закрашено.' });
   b.prop('sign', 49, 63, { use: 'sign', text: '← Волчьи тропы. Не заходить без меча.' });
   b.prop('sign', 44, 62, { use: 'sign', text: 'Тихий Брод — на юге.' });
   b.portal('cryptgate', 46, 8, 2, 1, 'crypt', { x: 32.5, y: 49.5 }, { req: { item: 'q_key' }, msg: 'Врата заперты. Нужен ключ с черепом.' });
@@ -284,7 +284,7 @@ function buildForest() {
   // лагерь разбойников
   b.prop('tent', 18, 36); b.prop('tent', 18, 42); b.prop('tent', 31, 45);
   b.prop('campfire', 26, 41); b.prop('crate', 21, 46); b.prop('barrel', 33, 36); b.prop('crate', 22, 33);
-  b.prop('sign', 28, 33, { use: 'sign', text: 'ТУТ ВАША ГОРДОСТЬ ЗАКАНЧИВАЕТСЯ. — Волчий Глаз' });
+  b.prop('sign', 28, 33, { use: 'sign', text: 'ЗДЕСЬ НЕ ТЕ, КОГО ВЫ ИЩЕТЕ. УХОДИТЕ. — В. Г.' });
   b.enemy('captain', 25, 37, 7, { unique: 'captain' });
   for (const [x, y] of [[20, 40], [30, 38], [23, 45], [31, 42], [27, 34]]) b.enemy('bandit', x, y, 5);
   b.chest('f_bandit', 17, 40, [['gold', 90], ['c_wolf', 1]]);
@@ -346,13 +346,13 @@ function buildCrypt() {
   for (const [x, y] of [[20, 4], [43, 4], [20, 9], [43, 9], [27, 4], [36, 4]]) b.prop('pillar', x, y);
   for (const [x, y] of [[27, 46], [36, 46]]) b.prop('brazier', x, y);
   for (const [x, y] of [[6, 26], [12, 26]]) b.prop('bookshelf', x, y);
-  b.prop('bookshelf', 8, 26, { id: 'page1', use: 'page', n: 1, text: 'Страница I: «Я построил это место для тех, кто падёт, защищая Пламя».' });
+  b.prop('bookshelf', 8, 26, { id: 'page1', use: 'page', n: 1, text: 'Страница I. «Серая зима длилась четыре года. Мёртвых складывали во рвы без имён: некому было их записать. На второй год рвы заговорили».' });
   b.prop('coffin', 52, 36); b.prop('coffin', 55, 36); b.prop('tomb', 51, 26); b.prop('tomb', 57, 26);
-  b.prop('rack', 53, 26, { id: 'page2', use: 'page', n: 2, text: 'Страница II: «Пламя питается верой людей. Когда они забудут — оно угаснет».' });
+  b.prop('rack', 53, 26, { id: 'page2', use: 'page', n: 2, text: 'Страница II. «Король не стал воевать с голосами. Он зажёг Пламя и привязал его к себе: пока оно горит, они молчат. Он называл это клятвой. Я бы назвал это долгом, который нельзя выплатить до конца».' });
   b.prop('lever', 5, 28, { id: 'lever_w', use: 'lever', text: 'Рычаг западного крыла' });
   b.prop('lever', 58, 28, { id: 'lever_e', use: 'lever', text: 'Рычаг восточного крыла' });
   b.prop('shrine', 31, 15, { id: 'shrine_crypt', use: 'shrine', name: 'Склепный алтарь' });
-  b.prop('bookshelf', 24, 14, { id: 'page3', use: 'page', n: 3, text: 'Страница III: «Если Владыка Скверны вырвется, помните — он боится лишь живого огня».' });
+  b.prop('bookshelf', 24, 14, { id: 'page3', use: 'page', n: 3, text: 'Страница III. «Эйлард сказал в последнюю ночь: я больше не могу гореть. Совет ответил: тогда найдём другого. Я пишу это потому, что скоро некому будет записать, кого именно».' });
   b.prop('statue', 32, 5);
   b.prop('throne', 31, 3);
   b.prop('brazier', 18, 3); b.prop('brazier', 45, 3);
