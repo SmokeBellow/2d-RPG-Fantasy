@@ -129,7 +129,7 @@ export function valley_fields() {
   b.portal('to_pass', 93, 30, 2, 4, 'valley_pass', { x: 4.5, y: 24.5 });
 
   b.border(3, T.TREE);
-  b.forest(0.66, 0.12, 5);
+  b.forest(0.7, 0.12, 5);
   b.litter('bush', 40, 3);
   return b.finish();
 }
@@ -175,7 +175,7 @@ export function vault1() {
   b.doors.push({ id: 'd1', x: 26, y: 30, w: 4, h: 2, opens: ['lv1a', 'lv1b'] });
   b.prop('barrier', 26, 10, { id: 'bar1', flagGone: 'lv1c' });
   b.doors.push({ id: 'bar1', x: 26, y: 10, w: 4, h: 1, opens: ['lv1c'] });
-  b.prop('sign', 24, 31, { use: 'sign', text: 'На двери две выемки под рычаги. Одна рука здесь не справится. (Кто-то нацарапал: «И одна голова тоже».)' });
+  b.prop('sign', 24, 38, { use: 'sign', text: 'На двери две выемки под рычаги. Одна рука здесь не справится. (Кто-то нацарапал: «И одна голова тоже».)' });
 
   // страницы: обрывки записей Меры
   b.prop('table', 8, 36, { use: 'page', id: 'pg_v1a', title: 'Журнал Меры, лист первый', text: 'Семь поглотителей, один счёт. Допуск на третьем 0,03. «Если третий уйдёт в перекос, остальные возьмут нагрузку, но не надолго». Приписано другим почерком: «Считал трое суток. Выходит, что мы построили плотину и забыли про воду».' });
@@ -400,10 +400,10 @@ export function valley_pass() {
   b.npc('vis_issa', 64, 42);
 
   // враги (10-12)
-  for (const [x, y] of [[28, 22], [32, 26]]) b.enemy('echoSoldier', x, y, 11);
-  b.enemy('echoArcher', 26, 24, 11); b.enemy('echoArcher', 33, 22, 11);
-  for (const [x, y] of [[50, 22], [54, 25]]) b.enemy('echoSoldier', x, y, 11);
-  b.enemy('echoArcher', 52, 20, 11); b.enemy('echoArcher', 57, 24, 11); b.enemy('echoArcher', 58, 20, 11);
+  for (const [x, y] of [[26, 21], [28, 27]]) b.enemy('echoSoldier', x, y, 11);
+  b.enemy('echoArcher', 24, 25, 11); b.enemy('echoArcher', 29, 19, 11);
+  for (const [x, y] of [[53, 22], [56, 26]]) b.enemy('echoSoldier', x, y, 11);
+  b.enemy('echoArcher', 55, 20, 11); b.enemy('echoArcher', 59, 24, 11); b.enemy('echoArcher', 60, 19, 11);
   b.enemy('echoBrute', 66, 40, 12); b.enemy('wraith', 62, 37, 12); b.enemy('wraith', 68, 38, 12);
   b.enemy('wraith', 56, 7, 12); b.enemy('echoSoldier', 53, 8, 12);
   b.enemy('echoBrute', 40, 12, 12);

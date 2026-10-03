@@ -305,7 +305,7 @@ export function buildGround(map, theme) {
   if (tint) { x.globalCompositeOperation = 'multiply'; x.fillStyle = tint; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = 'source-over'; }
   return c;
 }
-const TINT = { mine: '#c0a284', sewer: '#8fb496', temple: '#e4cc98', vault: '#98a8d0', abbey: '#d0c8c0', swamp: '#a8c098', lightforest: '#fff4c8', bastion: '#b4b8c8', arena: '#e0bc90', grove: '#a8dc98', glacier: '#c8dcf4', harbor: '#a8bccc', library: '#d0b088', clinic: '#e8e8da', den: '#b09888', pass: '#c8c0b0', fields: '#bcb49c', city: '#d8d0c8' };
+const TINT = { mine: '#c0a284', sewer: '#8fb496', temple: '#e4cc98', vault: '#98a8d0', abbey: '#d0c8c0', swamp: '#a8c098', lightforest: '#fff4c8', bastion: '#b4b8c8', arena: '#e0bc90', grove: '#a8dc98', glacier: '#c8dcf4', harbor: '#a8bccc', library: '#d0b088', clinic: '#e8e8da', den: '#b09888', pass: '#c8c0b0', fields: '#bcb49c', valley: '#b8b09a', city: '#d8d0c8' };
 
 export { PAL as TILE_PAL };
 export { shade, mix, hex2rgb };
