@@ -7,6 +7,7 @@ const THEMES = {
   forest: { bpm: 72, wave: 'sine', root: 2, bass: [0, null, null, null, -2, null, null, null], lead: [14, null, 17, null, 21, null, 19, null, 17, null, 14, null, 12, null, null, null], pad: [0, 3, 7], vol: 0.55 },
   crypt: { bpm: 60, wave: 'sine', root: -5, bass: [0, null, null, null, null, null, 1, null], lead: [12, null, null, null, 15, null, null, null, null, null, 13, null, null, null, null, null], pad: [0, 3, 6], vol: 0.5 },
   citadel: { bpm: 84, wave: 'sawtooth', root: -7, bass: [0, 0, null, 0, 1, 1, null, 1], lead: [12, null, 15, null, 18, null, 15, null, 13, null, 16, null, 19, null, 16, null], pad: [0, 3, 6], vol: 0.42 },
+  city: { bpm: 88, wave: 'triangle', root: 3, bass: [0, null, 5, null, 3, null, 5, null], lead: [12, null, 15, 17, 19, null, 17, 15, 12, null, 14, 15, 17, null, null, null], pad: [0, 3, 7], vol: 0.48 },
   boss: { bpm: 132, wave: 'sawtooth', root: -5, bass: [0, 0, 0, null, 0, 0, 3, null, 0, 0, 0, null, 5, 5, 3, null], lead: [12, null, 12, 15, null, 12, null, 18, 17, null, 15, null, 12, null, 10, null], pad: [0, 3, 7], vol: 0.45 },
 };
 
@@ -111,6 +112,9 @@ export class Sound {
       case 'quest': T(523, 0.12, 'triangle', 0.15); T(784, 0.2, 'triangle', 0.15, { at: now + 0.1 }); break;
       case 'fanfare': [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => T(f, 0.25, 'square', 0.1, { at: now + i * 0.11 })); break;
       case 'talk': T(400 + Math.random() * 120, 0.05, 'square', 0.08); break;
+      case 'omen': T(180, 0.9, 'sine', 0.1, { to: 140 }); T(540, 1.1, 'sine', 0.07, { to: 810, at: now + 0.15 }); Z(0.7, 0.05, { type: 'bandpass', f: 1500, to: 600 }); break;
+      case 'lik': [196, 294, 392, 588, 784].forEach((f, i) => T(f, 0.8, 'triangle', 0.12, { at: now + i * 0.07 })); Z(0.6, 0.12, { type: 'highpass', f: 2500 }); break;
+      case 'lightning': Z(0.18, 0.3, { type: 'highpass', f: 2000 }); T(1400, 0.12, 'sawtooth', 0.14, { to: 300 }); break;
       case 'forge': for (let i = 0; i < 4; i++) { Z(0.12, 0.3, { f: 3000, at: now + i * 0.22 }); T(900 + i * 80, 0.18, 'square', 0.1, { at: now + i * 0.22 }); } break;
       case 'portal': T(200, 0.5, 'sine', 0.18, { to: 800 }); Z(0.4, 0.1, { type: 'bandpass', f: 1000, to: 3000 }); break;
       case 'alert': T(700, 0.08, 'square', 0.1); T(950, 0.1, 'square', 0.1, { at: now + 0.07 }); break;

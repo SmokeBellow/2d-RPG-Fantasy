@@ -2,16 +2,15 @@
 import { TILE, VW, VH, T, ITEMS, CLASSES, AREAS } from './defs.js';
 import { PROP_DEF } from './maps.js';
 import { buildGround } from './sprites_tiles.js';
-import { propSprites, treeSprite, bushSprite } from './sprites_props.js';
-import { playerSet, npcSet, enemyHumanSet, creatureFrames, weaponSprite, catSprite, itemIcon, coinIcon } from './sprites_chars.js';
+import { propSprites, treeSprite, bushSprite, godAltarSprite } from './sprites_props.js';
+import { GODS } from './gods.js';
+import { playerSet, npcSet, enemyHumanSet, creatureFrames, transformSprite, weaponSprite, catSprite, itemIcon, coinIcon } from './sprites_chars.js';
 import { mk, rect, dot, disc, outline, flipX, shade } from './px.js';
 import { hash2, clamp, angleTo, normAng, dist } from './util.js';
 import { NPCS, npcMarker } from './quests.js';
 
 const FONT = '8px "Press Start 2P", monospace';
-const HUMAN_ENEMIES = new Set(['goblin', 'goblinArcher', 'bandit', 'skeleton', 'husk', 'captain']);
 const TAU = Math.PI * 2;
-const DARK = { crypt: 0.44, citadel: 0.4 };
 
 const flashCache = new WeakMap();
 function flashed(cv) {
@@ -98,12 +97,12 @@ export class Renderer {
     if (!this.groundCache[id]) this.groundCache[id] = buildGround(world.map, this.theme);
     this.ground = this.groundCache[id];
     this.fx = [];
-    this.dark = DARK[this.theme] || 0;
+    this.dark = AREAS[id].dark || 0;
     const p = world.p;
     this.camX = clamp(p.x - VW / 2, 0, world.W * TILE - VW);
     this.camY = clamp(p.y - VH / 2, 0, world.H * TILE - VH);
     if (this.dark) this.light = this.light || mk(VW, VH);
-    this.treeTheme = this.theme === 'village' ? 'village' : 'forest';
+    this.treeTheme = ['village', 'lightforest', 'city', 'harbor', 'clinic', 'grove'].includes(this.theme) ? 'village' : 'forest';
     // водные/лавовые тайлы не перебираем каждый кадр — список
     this.fluids = [];
     const m = world.map;
@@ -309,6 +308,7 @@ export class Renderer {
       else if (pr.k === 'beacon') spr = flags.beacon_lit ? e.on[Math.floor(this.t * 6) % 2] : e.off;
       else if (pr.k === 'lever') spr = flags[pr.id] ? e.on : e.off;
       else if (pr.k === 'hut') spr = e[pr.sprite || 'elder'];
+      else if (pr.k === 'godaltar') { const g = pr.god || 'x'; spr = e.by[g] || (e.by[g] = godAltarSprite(GODS[g] ? GODS[g].color : '#c8c8d8')); }
       else if (pr.k === 'house' || pr.k === 'tent') spr = e.variants[Math.floor(hash2(pr.x, pr.y, 2) * e.variants.length)];
       else if (e && e.frames) spr = e.frames[Math.floor(this.t * e.fps + hash2(pr.x, pr.y, 1) * 4) % e.frames.length];
       else if (e && e.s) spr = e.s;
@@ -322,6 +322,12 @@ export class Renderer {
     // NPC
     for (const n of w.npcs) {
       const look = NPCS[n.id].look;
+      if (look.startsWith('c:')) {
+        const cf = creatureFrames(look.slice(2));
+        const base = cf.frames[Math.floor(this.t * 1.5) % cf.frames.length];
+        list.push({ y: n.py + 6, spr: base, x: n.px - cf.w / 2 - 1, yy: n.py - cf.base - 1, shadow: [n.px, n.py + 3, 2] });
+        continue;
+      }
       if (look === 'cat') { list.push({ y: n.py + 6, spr: catSprite(Math.floor(this.t * 0.8) % 2), x: n.px - 13, yy: n.py - 10 }); continue; }
       const set = npcSet(look);
       const a = n.face != null ? n.face : Math.PI / 2 + Math.sin(n.t * 0.3) * 0.3;
@@ -454,15 +460,15 @@ export class Renderer {
     let spr, x, y, flashSpr = null, alpha = 1;
     const wind = e.state === 'wind' || e.pose === 'wind';
     const t = e.anim;
-    if (HUMAN_ENEMIES.has(e.type)) {
-      const set = enemyHumanSet(e.type);
+    const look = d.look || { c: e.type };
+    if (look.h) {
+      const set = enemyHumanSet(look.h);
       const mv = e.state === 'chase' || (e.state === 'idle' && e.moving) || e.state === 'lunge';
       const frame = mv ? [1, 0, 3, 0][Math.floor(t * 7) % 4] : 0;
       spr = this.dirSprite(set, a, wind ? 1 : frame).spr;
       x = e.x - 13; y = e.y - 27;
-      if (e.type === 'captain') { /* человек */ }
     } else {
-      const cf = creatureFrames(e.type);
+      const cf = creatureFrames(look.c);
       if (!cf) return null;
       const nf = cf.frames.length;
       const mv = e.state === 'chase' || e.state === 'orbit' || e.state === 'dive' || e.state === 'retreat' || e.state === 'lunge' || (e.state === 'idle' && e.moving) || e.pose === 'move' || e.pose === 'dash';
@@ -472,11 +478,16 @@ export class Renderer {
       spr = faceRight ? base : this.flipCache(base);
       const fly = cf.fly ? cf.fly + Math.sin(t * 3) * 2 : 0;
       x = e.x - cf.w / 2 - 1; y = e.y - cf.base - 1 - fly + (cf.fly ? 6 : 0);
-      if (e.type === 'slime') {
+      if (e.type === 'slime' || look.c === 'slime') {
         // прыжок: подскок вверх
         const ph = (t * 1.4) % 1;
         if ((e.state === 'chase' || e.moving) && ph < 0.45) y -= Math.sin((ph / 0.45) * Math.PI) * 5;
       }
+    }
+    if (look.tint || (look.scale && look.scale !== 1)) {
+      const w0 = spr.width, h0 = spr.height;
+      spr = transformSprite(spr, look.tint, look.scale);
+      x += (w0 - spr.width) / 2; y += h0 - spr.height;
     }
     if (e.flash > 0) flashSpr = flashed(spr);
     if (e.slow > 0) alpha = 0.92;

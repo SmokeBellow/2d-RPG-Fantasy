@@ -2,7 +2,7 @@
 export class Input {
   constructor(stage) {
     this.keys = new Set();
-    this.edge = { skill0: false, skill1: false, dodge: false, potHp: false, potMp: false, interact: false };
+    this.edge = { skill0: false, skill1: false, skill2: false, lik: false, dodge: false, potHp: false, potMp: false, interact: false };
     this.enabled = false;
     this.attackHeld = false;
     this.mouse = { x: 0, y: 0, down: false, at: 0, valid: false };
@@ -29,11 +29,14 @@ export class Input {
       const h = this.hooks;
       if (e.code === 'Escape' || e.code === 'KeyP') { h.pause && h.pause(); return; }
       if (e.code === 'KeyI' || e.code === 'KeyC') { h.inventory && h.inventory(); return; }
+      if (e.code === 'KeyT') { h.skills && h.skills(); return; }
       if (e.code === 'Tab' || e.code === 'KeyQ') { h.journal && h.journal(); return; }
       if (e.code === 'Enter' || e.code === 'Space') { if (h.advance && h.advance()) { e.preventDefault(); return; } }
       if (!this.enabled) return;
       if (e.code === 'KeyK') this.edge.skill0 = true;
       if (e.code === 'KeyL') this.edge.skill1 = true;
+      if (e.code === 'KeyU') this.edge.skill2 = true;
+      if (e.code === 'KeyR') this.edge.lik = true;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') this.edge.dodge = true;
       if (e.code === 'Digit1') this.edge.potHp = true;
       if (e.code === 'Digit2') this.edge.potMp = true;
@@ -116,6 +119,8 @@ export class Input {
     bind('t-attack', () => { this.attackHeld = true; }, () => { this.attackHeld = false; });
     bind('t-skill0', () => { this.edge.skill0 = true; });
     bind('t-skill1', () => { this.edge.skill1 = true; });
+    bind('t-skill2', () => { this.edge.skill2 = true; });
+    bind('t-lik', () => { this.edge.lik = true; });
     bind('t-dodge', () => { this.edge.dodge = true; });
     bind('t-interact', () => { this.edge.interact = true; });
     bind('t-hp', () => { this.edge.potHp = true; });
@@ -145,7 +150,7 @@ export class Input {
       aimX: mouseRecent ? cam.x + this.mouse.x : null,
       aimY: mouseRecent ? cam.y + this.mouse.y : null,
       attack: this.enabled && (this.attackHeld || k.has('Space') || k.has('KeyJ') || this.mouse.down),
-      skill: [this.edge.skill0, this.edge.skill1],
+      skill: [this.edge.skill0, this.edge.skill1, this.edge.skill2], lik: this.edge.lik,
       dodge: this.edge.dodge, potHp: this.edge.potHp, potMp: this.edge.potMp, interact: this.edge.interact,
     };
     for (const key of Object.keys(this.edge)) this.edge[key] = false;

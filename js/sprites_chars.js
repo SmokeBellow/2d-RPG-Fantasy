@@ -285,6 +285,12 @@ const NPC_LOOKS = {
   merchant: { skin: '#f0c8a0', hairC: '#5a2a2a', top: ['#b8607a', '#8a405a', '#d880a0'], pants: ['#7a405a', '#5a2c42'], boots: '#3a2a1c', robe: true, hat: 'scarf', hatCol: '#e0a840', apron: '#f0e6d0', hold: 'basket', blush: '#e89a88', belt: '#8a405a' },
   innkeeper: { skin: '#e8b890', hairC: '#6a4a2a', hair: 'bald', top: ['#a89068', '#867048', '#c8b088'], pants: ['#5a4a3a', '#443626'], boots: '#3a2a1c', apron: '#f0ece0', hold: 'mug', mustache: '#6a4a2a', hat: null, belt: '#5a3a22' },
   herbalist: { skin: '#f0c8a0', hairC: '#7a4a2a', hair: 'long', braid: true, top: ['#5a9a58', '#3e7a40', '#7ac078'], pants: ['#3e7a40', '#2c5a30'], boots: '#3a2a1c', robe: true, hat: 'leaf', hold: 'basket', blush: '#e89a88', belt: '#7a5a3a' },
+  miner: { skin: '#d8a078', hairC: '#3a2a1c', top: ['#6a6a58', '#4e4e40', '#8a8a74'], pants: ['#4a4038', '#342c26'], boots: '#2a2018', hat: 'helm', hatCol: '#a89a5a', beard: '#3a2a1c', hold: 'pick', belt: '#2a2018', sleeve: '#d8a078' },
+  minerF: { skin: '#e8b890', hairC: '#7a3a1a', hair: 'long', braid: true, top: ['#7a6a58', '#5a4c3e', '#9a8a74'], pants: ['#4a4038', '#342c26'], boots: '#2a2018', hat: 'helm', hatCol: '#a89a5a', hold: 'pick', belt: '#2a2018', blush: '#e89a88' },
+  ranger: { skin: '#e0b088', hairC: '#6a5a3a', top: ['#4a6a3a', '#34502a', '#6a8a52'], pants: ['#4a4030', '#342c22'], boots: '#2a2018', hat: 'hood', hatCol: '#3e5a2e', hold: 'bow', cape: '#34502a', belt: '#3a2a1c', beard: '#6a5a3a' },
+  seer: { skin: '#f0d0b0', hairC: '#c8c0d0', hair: 'spiky', top: ['#b8b4d0', '#8e8aac', '#d8d4ec'], pants: ['#8e8aac', '#6e6a8c'], boots: '#5a5470', legH: 4, torsoH: 6, hat: null, glowEyes: '#d8e8ff', blush: '#e8a8a0', belt: null },
+  seerF: { skin: '#f0d0b0', hairC: '#e8e4f0', hair: 'long', top: ['#c8c4e0', '#9e9abc', '#e8e4fc'], pants: ['#9e9abc', '#7e7a9c'], boots: '#5a5470', robe: true, hat: null, glowEyes: '#d8e8ff', blush: '#e8a8a0', belt: '#d8d4ec' },
+  witch: { skin: '#d8c8a0', hairC: '#5a6a4a', hair: 'long', braid: true, top: ['#4a5a3a', '#34422a', '#6a7a52'], pants: ['#34422a', '#26301e'], boots: '#2a2018', robe: true, hat: 'leaf', hold: 'basket', belt: '#7a5a3a', blush: '#c8a888' },
   kid: { skin: '#f4cda6', hairC: '#c88a3a', hair: 'spiky', top: ['#e8c068', '#c09840', '#f8dc88'], pants: ['#4a6a9a', '#34507a'], boots: '#5a3a22', legH: 4, torsoH: 6, hat: null, blush: '#e89a88', belt: null },
 };
 const npcCache = new Map();
@@ -535,12 +541,41 @@ const ENEMY_HUMAN = {
   husk: { skin: '#6a5a8a', hairC: '#2a1a42', hair: 'bald', top: ['#3a2a58', '#261a40', '#5a4488'], pants: ['#241a38', '#18102a'], boots: '#14102a', hat: 'helm', hatCol: '#3a2a58', horns: true, pads: true, padCol: '#5a4488', glowEyes: '#ff3a8a', hold: 'sword', belt: '#8a6ad0', trim: '#8a6ad0' },
   captain: { skin: '#e0b088', hairC: '#6a2a1a', top: ['#7a2a2a', '#561c1c', '#a04444'], pants: ['#2a2430', '#1a161e'], boots: '#1a1418', hat: 'bandana', hatCol: '#c83a3a', eyepatch: true, scar: '#c07058', beard: '#6a2a1a', hold: 'dagger', belt: '#3a2a1c', cape: '#2a1018', pads: true, padCol: '#6a5a4a', mustache: null },
 };
+Object.assign(ENEMY_HUMAN, {
+  echoMiner: { skin: '#8a9a7a', hairC: '#3a3a30', hair: 'bald', top: ['#5a5a48', '#42423a', '#78785e'], pants: ['#3a3630', '#2a2622'], boots: '#221e1a', hat: 'helm', hatCol: '#7a7248', glowEyes: '#c8e060', hold: 'pick', belt: '#2a2018', sleeve: '#8a9a7a' },
+  echoVagrant: { skin: '#9a9a8a', hairC: '#4a4a40', hair: 'spiky', top: ['#6a6454', '#4e483c', '#8a846e'], pants: ['#4a4438', '#383228'], boots: '#2a2620', glowEyes: '#d8e868', hold: 'club', belt: '#3a3228' },
+  thug: { skin: '#d8a078', hairC: '#2a2018', hair: 'bald', top: ['#5a4a3a', '#42362a', '#7a6a58'], pants: ['#3a3228', '#2a241c'], boots: '#221a14', hold: 'club', belt: '#2a2018', scar: '#b87858', pads: true, padCol: '#6a5a48' },
+  hunter: { skin: '#e0b088', hairC: '#4a3a2a', top: ['#5a7a48', '#42602e', '#7a9a62'], pants: ['#4a4030', '#342c22'], boots: '#2a2018', hat: 'hood', hatCol: '#42602e', hold: 'bow', cape: '#42602e', belt: '#3a2a1c', beard: '#4a3a2a' },
+  echoSoldier: { skin: '#8a8a9a', hairC: '#2a2a38', hair: 'bald', top: ['#6a6a7a', '#4e4e5c', '#8a8a9c'], pants: ['#3a3a48', '#2a2a36'], boots: '#22222c', hat: 'helm', hatCol: '#8a8a9c', pads: true, padCol: '#8a8a9c', glowEyes: '#a8c8ff', hold: 'sword', belt: '#3a3a48', tabard: '#5a4a6a' },
+  echoArcher: { skin: '#8a8a9a', hairC: '#2a2a38', top: ['#5a5a6c', '#42424e', '#78788a'], pants: ['#3a3a48', '#2a2a36'], boots: '#22222c', hat: 'hood', hatCol: '#42424e', glowEyes: '#a8c8ff', hold: 'bow', cape: '#34343e' },
+  echoBrute: { skin: '#7a8a7a', hairC: '#2a2a28', hair: 'bald', top: ['#5a5a50', '#42423a', '#78786a'], pants: ['#3a3a32', '#2a2a24'], boots: '#22221c', hat: 'helm', hatCol: '#6a6a5a', horns: true, pads: true, padCol: '#6a6a5a', glowEyes: '#e8e060', hold: 'club', belt: '#2a2a22' },
+  sentinel: { skin: '#c8c4d0', hairC: '#e8e4f0', hair: 'bald', top: ['#a8a4b8', '#7e7a92', '#c8c4dc'], pants: ['#6a667e', '#4e4a60'], boots: '#3a3648', hat: 'helm', hatCol: '#c8c4dc', plume: '#6a8ad0', pads: true, padCol: '#c8c4dc', glowEyes: '#6a9aff', hold: 'spear', tabard: '#4a5a9a' },
+  gladiator: { skin: '#c88858', hairC: '#2a1a10', top: ['#8a5a3a', '#6a4228', '#a87858'], pants: ['#5a4030', '#42302a'], boots: '#3a2818', hat: 'helm', hatCol: '#b8a068', plume: '#c83a3a', pads: true, padCol: '#b8a068', hold: 'sword', belt: '#5a3a22', sleeve: '#c88858' },
+  smuggler: { skin: '#d8b090', hairC: '#2a2a3a', top: ['#3a4a5a', '#2a3644', '#566a7e'], pants: ['#2a2a38', '#1e1e2a'], boots: '#1a1a22', hat: 'bandana', hatCol: '#3a6a7a', mask: '#1a1a24', hold: 'dagger', belt: '#2a2018', cape: '#1e2a38' },
+});
 const humanEnemyCache = new Map();
 export function enemyHumanSet(type) {
   if (humanEnemyCache.has(type)) return humanEnemyCache.get(type);
   const s = humanSet(ENEMY_HUMAN[type]);
   humanEnemyCache.set(type, s);
   return s;
+}
+
+// перекраска и масштаб готового спрайта (для look.tint / look.scale), с кешем
+const xfCache = new WeakMap();
+export function transformSprite(cv, tint, scale) {
+  if (!tint && (!scale || scale === 1)) return cv;
+  const key = `${tint || ''}|${scale || 1}`;
+  let m = xfCache.get(cv);
+  if (!m) { m = new Map(); xfCache.set(cv, m); }
+  if (m.has(key)) return m.get(key);
+  const sc = scale || 1;
+  const [o, x] = mk(Math.round(cv.width * sc), Math.round(cv.height * sc));
+  x.imageSmoothingEnabled = false;
+  x.drawImage(cv, 0, 0, o.width, o.height);
+  if (tint) { x.globalCompositeOperation = 'source-atop'; x.globalAlpha = 0.45; x.fillStyle = tint; x.fillRect(0, 0, o.width, o.height); x.globalAlpha = 1; x.globalCompositeOperation = 'source-over'; }
+  m.set(key, o);
+  return o;
 }
 
 // ---------------------------------------------------------------- реестр

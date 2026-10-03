@@ -56,7 +56,6 @@ function fade(fn, ms = 360) {
 const game = {
   get world() { return world; },
   sound,
-  act(a) { world.act(a); },
   togglePanel(tab) {
     if (!world || transitioning) return;
     if (ui.panelOpen && (ui.tab === tab || !tab)) { ui.closePanel(); return; }
@@ -88,6 +87,7 @@ const game = {
     fade(() => { world.respawn(); renderer.setWorld(world); ui.tracker(world.s); writeSave(world.s); }, 300);
   },
   afterUi() { input.reset(); ui.tracker(world.s); },
+  afterChoice() { ui.tracker(world.s); },
 };
 
 function begin(state, isNew) {
@@ -106,11 +106,12 @@ function begin(state, isNew) {
     ui.openDialogue({
       name: 'Пролог',
       lines: [
-        'Говорят, триста лет назад Эмбервейл пережил Серую зиму, и с тех пор огонь на маяке не гаснет. Говорят много. Но этой ночью над Тихим Бродом нет света, и лавочники закрыли ставни раньше обычного.',
+        'Три века назад мир пережил забытый век. Что в нём было, не помнит никто. Известно только, что была война, после которой люди перестали рассказывать про неё детям.',
+        'Над камнем у Тихого Брода высечено: «Здесь был тот, кто сделал». И больше ничего.',
         ...PROLOGUE[state.cls],
-        'Ты входишь в деревню на исходе третьей ночи. Староста Орвен живёт в доме у северо-западной дороги. Подойди к нему и нажми E (на телефоне появится кнопка).',
+        'Ты входишь в деревню под вечер. Староста Орвен живёт в доме у северо-западной дороги. Подойди к нему и нажми E (на телефоне появится кнопка).',
       ],
-      choices: [{ label: 'Идти', act: { t: 'close' } }],
+      choices: [{ label: 'Идти' }],
     });
   }
 }
@@ -122,8 +123,8 @@ const PROLOGUE = {
     'Ржавый клинок — всё, что у тебя осталось. Здесь, говорят, нанимают без вопросов. Тебя это устраивает.',
   ],
   mage: [
-    'Коллегия отлучила тебя за вопрос, который ей было неудобно слышать: откуда берётся Скверна, если её никто не создавал? Ответа ты не нашёл. Зато выяснил, что на севере всё началось там, где гаснет маяк.',
-    'Посох из ветки, ряса с чужого плеча, три записные книжки. Если кто-то в Эмбервейле и знает, почему гаснет огонь, то живёт он у этого маяка.',
+    'Коллегия отлучила тебя за вопрос, который ей было неудобно слышать: откуда магия берёт память? Ответа ты не нашёл. Зато выяснил, что на севере всё началось там, где гаснет маяк.',
+    'Посох из ветки, ряса с чужого плеча, три записные книжки. Если кто-то и знает, почему маяки молчат, то живёт он у этого.',
   ],
   rogue: [
     'Ты ушёл из порта ночью, оставив за спиной долг, который не мог вернуть, и человека, который не собирался прощать. Север показался достаточно далёким.',
@@ -146,10 +147,16 @@ function handle(events) {
       case 'toast': ui.toast(e.text, e.kind); break;
       case 'area': ui.banner(e.name, e.sub); break;
       case 'talk': ui.openDialogue(e.plan); input.reset(); break;
-      case 'text': if (e.panel) { ui.openDialogue({ name: e.name, lines: [e.text], choices: [{ label: 'Закрыть', act: { t: 'close' } }] }); input.reset(); } break;
+      case 'text': if (e.panel) { ui.openDialogue({ name: e.name, lines: [e.text], choices: [{ label: 'Закрыть' }] }); input.reset(); } break;
+      case 'omen': ui.toast(e.text, 'omen'); sound.sfx('omen'); break;
+      case 'shop': game.openShop(e.id); break;
+      case 'lik': ui.toast(e.text || 'Лик пробуждается', 'omen'); break;
+      case 'bossIntro2': ui.banner(e.name, 'Бой', true); break;
       case 'levelup':
         ui.toast(`Новый уровень: ${e.lvl}!`, 'good'); sound.sfx('fanfare');
         if (e.lvl === 5) ui.toast('Открыт второй навык!', 'good');
+        if (e.lvl === 10) ui.toast('Открыт третий навык!', 'good');
+        ui.toast('Очко навыков: клавиша T', 'good');
         ui.tracker(world.s);
         break;
       case 'questDone': ui.questPop(e.id, e.reward); break;
@@ -162,9 +169,9 @@ function handle(events) {
         sound.stopMusic();
         setTimeout(() => { if (world && world.p.dead) { ui.showDeath(true); input.reset(); } }, 1200);
         break;
-      case 'victory':
-        writeSave(world.s);
-        setTimeout(() => { ui.showEnding(world.s); input.reset(); }, 2600);
+      case 'ending':
+        world.s.flags.ending = e.id; writeSave(world.s);
+        setTimeout(() => { ui.showEnding(world.s, e.id); input.reset(); }, 1800);
         break;
       case 'beacon': ui.tracker(world.s); break;
       case 'transition':
@@ -220,6 +227,7 @@ function init() {
     pause: () => game.escape(),
     inventory: () => { if (screen === 'game') game.togglePanel('bag'); },
     journal: () => { if (screen === 'game') game.togglePanel('quests'); },
+    skills: () => { if (screen === 'game') game.togglePanel('skills'); },
     advance: () => (ui.plan ? ui.advance() : false),
   };
   ui.buildClassCards((cls) => {
@@ -267,7 +275,7 @@ function init() {
   // сохранить при уходе со страницы
   const flush = () => { if (world && screen === 'game' && !world.p.dead) writeSave(world.s); };
   window.addEventListener('pagehide', flush);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { flush(); sound.stopMusic(); } else if (world) sound.setTheme(world.area === 'village' ? 'village' : AREAS[world.area].theme); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { flush(); sound.stopMusic(); } else if (world) sound.setTheme(AREAS[world.area].music || 'village'); });
 
   // PWA
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});

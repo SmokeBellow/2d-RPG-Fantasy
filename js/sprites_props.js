@@ -449,6 +449,95 @@ function reeds() { return wrap('reeds', (x, W, H) => { for (let i = 0; i < 4; i+
 
 // Реестр: kind -> { frames: [canvas], fps } либо { s: canvas }
 let reg = null;
+
+// ---------------------------------------------------------------- новые объекты (локации 1-6)
+function stairs() {
+  return wrap('stairs', (x, W, H) => {
+    rect(x, 0, 0, W, H, '#2a2438');
+    for (let i = 0; i < 4; i++) { rect(x, 2, 1 + i * 3, W - 4, 3, i % 2 ? '#5a5470' : '#6a6484'); rect(x, 2, 1 + i * 3, W - 4, 1, '#8a84a8'); }
+    rect(x, 0, 0, 2, H, '#4a4460'); rect(x, W - 2, 0, 2, H, '#4a4460');
+  });
+}
+function lamp() {
+  return wrap('lamp', (x, W, H) => {
+    shadow(x, 8, H - 3, 4, 1, 0.3);
+    rect(x, 7, 10, 2, H - 13, '#3a3448'); rect(x, 5, H - 5, 6, 2, '#2a2438');
+    rect(x, 4, 3, 8, 8, '#4a4458'); rect(x, 5, 4, 6, 6, '#ffd870'); rect(x, 6, 5, 4, 4, '#fff4c0'); rect(x, 3, 2, 10, 2, '#2a2438');
+  });
+}
+function godaltar(col) {
+  return wrap('godaltar', (x, W, H) => {
+    shadow(x, W / 2, H - 2, 12, 3, 0.35);
+    rect(x, 3, H - 8, W - 6, 7, '#5a5878'); rect(x, 3, H - 8, W - 6, 1, '#8a88aa'); rect(x, 1, H - 3, W - 2, 3, '#3a3850');
+    rect(x, 7, H - 18, W - 14, 10, '#6a6888'); rect(x, 7, H - 18, W - 14, 2, '#9a98ba');
+    disc(x, W / 2, H - 22, 5, col); disc(x, W / 2, H - 22, 3, shade(col, 1.4)); dot(x, W / 2 - 1, H - 24, '#fff');
+    rect(x, 2, H - 14, 2, 8, col); rect(x, W - 4, H - 14, 2, 8, col);
+  });
+}
+function bed() {
+  return wrap('bed', (x, W, H) => {
+    shadow(x, W / 2, H - 2, 13, 2, 0.3);
+    rect(x, 1, H - 11, W - 2, 10, '#6a4a2a'); rect(x, 2, H - 10, W - 4, 7, '#d8d0c0'); rect(x, 2, H - 10, 8, 6, '#f0e8d8'); rect(x, 12, H - 10, W - 14, 7, '#7a8ab0');
+  });
+}
+function boat() {
+  return wrap('boat', (x, W, H) => {
+    shadow(x, W / 2, H - 2, 34, 3, 0.3);
+    rect(x, 4, H - 12, W - 8, 10, '#6a4a2a'); rect(x, 2, H - 14, W - 4, 3, '#8a6238'); rect(x, 6, H - 8, W - 12, 2, '#4a3220');
+    rect(x, W / 2 - 1, 2, 3, H - 14, '#4a3220'); rect(x, W / 2 + 2, 4, 16, 14, '#e8e0cc'); rect(x, W / 2 + 2, 4, 16, 1, '#fff');
+  });
+}
+function post() { return wrap('post', (x, W, H) => { shadow(x, 8, H - 3, 3, 1, 0.3); rect(x, 7, 2, 3, H - 4, '#6a4a2a'); rect(x, 7, 2, 1, H - 4, '#8a6238'); rect(x, 4, 4, 9, 4, '#8a6238'); rect(x, 4, 4, 9, 1, '#b08848'); }); }
+function net() { return wrap('net', (x, W, H) => { rect(x, 1, 2, 2, H - 2, '#5a3a22'); rect(x, W - 3, 2, 2, H - 2, '#5a3a22'); for (let i = 3; i < W - 3; i += 3) rect(x, i, 3, 1, H - 6, '#b8a878'); for (let j = 4; j < H - 3; j += 3) rect(x, 3, j, W - 6, 1, '#b8a878'); }); }
+function ruin() {
+  return wrap('ruin', (x, W, H) => {
+    shadow(x, W / 2, H - 2, 12, 2, 0.3);
+    rect(x, 2, H - 10, 10, 9, '#6a6674'); rect(x, 2, H - 10, 10, 2, '#8a8696'); rect(x, 18, H - 18, 8, 17, '#5a5664'); rect(x, 18, H - 18, 8, 2, '#7a7686'); rect(x, 20, H - 14, 2, 8, '#3a3644');
+    rect(x, 12, H - 6, 6, 5, '#5a5664'); dot(x, 6, H - 12, '#4a6a3a'); dot(x, 22, H - 20, '#4a6a3a');
+  });
+}
+function spear() { return wrap('spear', (x, W, H) => { shadow(x, 8, H - 3, 3, 1, 0.3); rect(x, 7, 5, 2, H - 7, '#6a4a2a'); rect(x, 6, 1, 4, 5, '#c8ccd8'); rect(x, 7, 0, 2, 2, '#fff'); rect(x, 5, H - 8, 6, 2, '#5a3a22'); }); }
+function plant() {
+  return wrap('plant', (x, W, H) => {
+    shadow(x, 8, H - 3, 5, 1, 0.3);
+    for (const [dx, h, c] of [[-4, 8, '#3e7a40'], [-1, 12, '#5aa058'], [3, 9, '#3e7a40'], [5, 6, '#5aa058']]) { rect(x, 8 + dx, H - 3 - h, 2, h, c); }
+    dot(x, 7, H - 15, '#f0e078'); dot(x, 12, H - 11, '#e87a9a');
+  });
+}
+function gate() {
+  return wrap('gate', (x, W, H) => {
+    rect(x, 0, 2, 10, H - 2, '#4a4860'); rect(x, W - 10, 2, 10, H - 2, '#4a4860'); rect(x, 0, 2, 10, 2, '#7a789a'); rect(x, W - 10, 2, 10, 2, '#7a789a');
+    rect(x, 10, 4, W - 20, 6, '#3a3850');
+    for (let i = 12; i < W - 12; i += 5) rect(x, i, 10, 2, H - 12, '#2a2a38');
+    rect(x, 10, H - 5, W - 20, 3, '#2a2a38');
+  });
+}
+function monolith() {
+  return wrap('monolith', (x, W, H) => {
+    shadow(x, W / 2, H - 2, 11, 3, 0.35);
+    rect(x, 4, 4, W - 8, H - 6, '#3a384e'); rect(x, 4, 4, 3, H - 6, '#5a587a'); rect(x, W - 7, 4, 3, H - 6, '#24223a'); rect(x, 6, 2, W - 12, 3, '#4a486a');
+    for (let j = 9; j < H - 8; j += 5) { rect(x, 9, j, W - 18, 1, '#a898e0'); dot(x, 10, j - 1, '#a898e0'); dot(x, W - 11, j + 1, '#a898e0'); }
+  });
+}
+function beam() { return wrap('beam', (x, W, H) => { shadow(x, 8, H - 3, 4, 1, 0.3); rect(x, 6, 2, 4, H - 4, '#8a6238'); rect(x, 6, 2, 1, H - 4, '#b08848'); rect(x, 3, 2, 10, 3, '#6a4a2a'); }); }
+function grave() { return wrap('grave', (x, W, H) => { shadow(x, 8, H - 3, 5, 1, 0.3); rrect(x, 4, 3, 8, H - 6, '#8a8696'); rect(x, 4, 3, 8, 2, '#a8a4b8'); rect(x, 7, 6, 2, 5, '#5a5664'); rect(x, 6, 7, 4, 1, '#5a5664'); rect(x, 3, H - 4, 10, 2, '#4a6a3a'); }); }
+function hut2() {
+  return wrap('hut2', (x, W, H) => {
+    shadow(x, W / 2, H - 2, 20, 3, 0.3);
+    rect(x, 4, H - 24, W - 8, 22, '#8a6a48'); rect(x, 4, H - 24, W - 8, 2, '#a88a62');
+    for (let i = 8; i < W - 6; i += 6) rect(x, i, H - 22, 1, 18, '#6a4a2c');
+    rect(x, 0, H - 32, W, 10, '#6a4a2a'); rect(x, 0, H - 32, W, 2, '#8a6a3a'); rect(x, 2, H - 24, W - 4, 2, '#4a3220');
+    rect(x, W / 2 - 4, H - 14, 8, 12, '#3a2a1c'); rect(x, 8, H - 18, 6, 6, '#c8d8e0');
+  });
+}
+function tree2() {
+  return wrap('tree2', (x, W, H) => {
+    shadow(x, 8, H - 3, 6, 2, 0.3);
+    rect(x, 7, H - 12, 3, 10, '#5a3a22'); rect(x, 7, H - 12, 1, 10, '#7a5232');
+    disc(x, 8, H - 18, 6, '#4a7a3a'); disc(x, 6, H - 20, 4, '#5a9448'); disc(x, 11, H - 16, 3, '#3a6a30');
+  });
+}
+
 export function propSprites() {
   if (reg) return reg;
   reg = {
@@ -470,7 +559,12 @@ export function propSprites() {
     obelisk: { s: obelisk() }, cart: { s: cart() }, rack: { s: rack() }, table: { s: table() }, banner: { s: banner() },
     stonedoor: { s: stonedoor() }, cryptgate: { s: cryptgate() }, barrier: { frames: [barrier(0), barrier(1), barrier(2)], fps: 6 },
     reeds: { s: reeds() },
+    stairs: { s: stairs() }, lamp: { s: lamp() }, bed: { s: bed() }, boat: { s: boat() }, post: { s: post() }, net: { s: net() }, ruin: { s: ruin() },
+    spear: { s: spear() }, plant: { s: plant() }, gate: { s: gate() }, monolith: { s: monolith() }, beam: { s: beam() }, grave: { s: grave() },
+    hut2: { s: hut2() }, tree2: { s: tree2() }, godaltar: { s: godaltar('#c8c8d8'), by: {} },
     bush: {}, // по теме, см. getBush
   };
   return reg;
 }
+
+export const godAltarSprite = (col) => godaltar(col);

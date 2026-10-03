@@ -10,7 +10,7 @@ import {
   QUESTS, NODES, ENTRY, NPCS, questStatus, acceptQuest, completeQuest, onKill, itemName,
 } from './quests.js';
 import { favor as godFavor, godRank, GODS, GOD_IDS, templeReading } from './gods.js';
-import { skillMod, respec as skillRespec, respecCost } from './skills.js';
+import { skillMod, respec as skillRespec, respecCost, learn as skillLearn } from './skills.js';
 import { updateEnemy, makeBossState } from './ai.js';
 
 const TAU = Math.PI * 2;
@@ -1109,6 +1109,14 @@ export class World {
     this.emit({ t: 'stats' });
     this.emit({ t: 'save' });
   }
+
+  // ------------------------------------------------------------- дерево навыков
+  learnNode(id) {
+    if (!skillLearn(this.s, id)) { this.emit({ t: 'sfx', n: 'deny' }); return false; }
+    this.refreshStats(); this.emit({ t: 'sfx', n: 'item' }); this.emit({ t: 'stats' });
+    return true;
+  }
+  respecSkills() { this.applyFx([['respec']]); }
 
   // ------------------------------------------------------------- торговля
   shopStock(id) {

@@ -17,6 +17,11 @@ const PAL = {
   lava: ['#7a1a10', '#b02a10', '#e05a14', '#ffa030'],
   blight: ['#2e2244', '#3a2c56', '#483868', '#5c4682'],
   bwall: ['#241a3a', '#30244e', '#40326a', '#5a4690'],
+  swamp: ['#2a4a2e', '#355a35', '#416a3a', '#4e7a44'],
+  snow: ['#c6d2de', '#d6e0ea', '#e6eef6', '#f6fafe'],
+  ice: ['#76acd6', '#88bce2', '#a2d0f0', '#c8e8fa'],
+  ash: ['#38342f', '#443f3a', '#524c46', '#645d56'],
+  cobble: ['#6e685e', '#7c766a', '#8c8678', '#9c9688'],
   rock: ['#5a5a64', '#6e6e78', '#84848e', '#9c9ca6'],
 };
 
@@ -198,6 +203,32 @@ function wallTile(x, wx, wy, tx, ty, face, theme) {
   if (hash2(tx, ty, 79) > 0.9) { rect(x, 4, 6, 3, 2, p[0]); }
 }
 
+function swampTile(x, wx, wy, tx, ty) {
+  noiseFill(x, wx, wy, PAL.swamp, 61, 0.14, (i, j) => { const n = fbm((wx + i) * 0.07, (wy + j) * 0.07, 3); return n > 0.58 ? 2 : n < 0.38 ? 0 : 1; });
+  const h = hash2(tx, ty, 63);
+  if (h > 0.72) { rect(x, 3, 5, 9, 5, '#24505a'); rect(x, 4, 6, 7, 3, '#2e6a70'); rect(x, 6, 6, 2, 1, '#6aa8a8'); }
+  if (h < 0.1) { rect(x, 7, 3, 1, 5, '#6a8a3a'); rect(x, 9, 4, 1, 4, '#7a9a44'); }
+}
+function snowTile(x, wx, wy, tx, ty) {
+  noiseFill(x, wx, wy, PAL.snow, 67, 0.1, 2);
+  if (hash2(tx, ty, 69) > 0.8) { rect(x, 4, 9, 5, 1, PAL.snow[0]); rect(x, 5, 10, 3, 1, PAL.snow[1]); }
+}
+function iceTile(x, wx, wy, tx, ty) {
+  noiseFill(x, wx, wy, PAL.ice, 71, 0.08, 2);
+  const h = hash2(tx, ty, 73);
+  if (h > 0.5) { rect(x, 2, 4 + Math.floor(h * 6), 9, 1, '#e8f6ff'); rect(x, 6, 5 + Math.floor(h * 6), 6, 1, PAL.ice[0]); }
+}
+function ashTile(x, wx, wy, tx, ty) {
+  noiseFill(x, wx, wy, PAL.ash, 75, 0.16, 1);
+  const h = hash2(tx, ty, 77);
+  if (h > 0.9) { dot(x, 5, 6, '#ff8a3a'); dot(x, 6, 6, '#ffb060'); }
+}
+function cobbleTile(x, wx, wy, tx, ty) {
+  noiseFill(x, wx, wy, PAL.cobble, 79, 0.1, 1);
+  for (let j = 0; j < TILE; j += 5) { rect(x, 0, j, TILE, 1, PAL.cobble[0]); const off = (j / 5) % 2 ? 4 : 0; for (let i = off; i < TILE; i += 8) rect(x, i, j, 1, 5, PAL.cobble[0]); }
+  rect(x, 1, 1, 6, 1, PAL.cobble[3]);
+}
+
 function lavaTile(x, wx, wy, tx, ty) {
   const p = PAL.lava;
   noiseFill(x, wx, wy, p, 53, 0.2, 1);
@@ -219,8 +250,8 @@ function rockTile(x, wx, wy) {
 // Рисует всю карту в один канвас. Деревья здесь — трава (кроны рисуются объектами).
 export function buildGround(map, theme) {
   const [c, x] = mk(map.w * TILE, map.h * TILE);
-  const forest = theme === 'forest';
-  const dark = theme === 'crypt' || theme === 'citadel';
+  const forest = ['forest', 'grove'].includes(theme);
+  const dark = ['crypt', 'citadel', 'mine', 'sewer', 'temple', 'vault', 'abbey', 'library', 'den'].includes(theme);
   const get = (tx, ty) => (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h ? T.WALL : map.tiles[ty * map.w + tx]);
   const isWater = (t) => t === T.WATER || t === T.DEEP;
   const isWall = (t) => t === T.CWALL || t === T.BWALL || t === T.WALL || t === T.ROCK;
@@ -249,6 +280,11 @@ export function buildGround(map, theme) {
       case T.CWALL: wallTile(tcx, wx, wy, tx, ty, !isWall(get(tx, ty + 1)), 'crypt'); break;
       case T.BWALL: wallTile(tcx, wx, wy, tx, ty, !isWall(get(tx, ty + 1)), 'blight'); break;
       case T.LAVA: lavaTile(tcx, wx, wy, tx, ty); break;
+      case T.SWAMP: swampTile(tcx, wx, wy, tx, ty); break;
+      case T.SNOW: snowTile(tcx, wx, wy, tx, ty); break;
+      case T.ICE: iceTile(tcx, wx, wy, tx, ty); break;
+      case T.ASH: ashTile(tcx, wx, wy, tx, ty); break;
+      case T.COBBLE: cobbleTile(tcx, wx, wy, tx, ty); break;
       case T.ROCK: case T.WALL: rockTile(tcx, wx, wy); break;
       default: grassTile(tcx, wx, wy, forest);
     }
@@ -264,8 +300,12 @@ export function buildGround(map, theme) {
       if (isWall(get(tx + 1, ty))) { x.fillStyle = 'rgba(5,3,12,0.2)'; x.fillRect(tx * TILE + TILE - 3, ty * TILE, 3, TILE); }
     }
   }
+  // общий оттенок области: одни и те же плитки в разных местах выглядят по-разному
+  const tint = TINT[theme];
+  if (tint) { x.globalCompositeOperation = 'multiply'; x.fillStyle = tint; x.fillRect(0, 0, c.width, c.height); x.globalCompositeOperation = 'source-over'; }
   return c;
 }
+const TINT = { mine: '#c0a284', sewer: '#8fb496', temple: '#e4cc98', vault: '#98a8d0', abbey: '#d0c8c0', swamp: '#a8c098', lightforest: '#fff4c8', bastion: '#b4b8c8', arena: '#e0bc90', grove: '#a8dc98', glacier: '#c8dcf4', harbor: '#a8bccc', library: '#d0b088', clinic: '#e8e8da', den: '#b09888', pass: '#c8c0b0', fields: '#bcb49c', city: '#d8d0c8' };
 
 export { PAL as TILE_PAL };
 export { shade, mix, hex2rgb };

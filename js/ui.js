@@ -1,5 +1,7 @@
 // Интерфейс поверх canvas: HUD, диалоги, сумка/герой/журнал, магазин, меню.
-import { CLASSES, ITEMS, CFG, xpForLevel, AREAS } from './defs.js';
+import { CLASSES, ITEMS, CFG, xpForLevel, AREAS, SHOPS } from './defs.js';
+import { BRANCHES, TREE, rankOfNode, canLearn, freePoints, respecCost } from './skills.js';
+import { ENDINGS, epilogue } from './endings.js';
 import { QUESTS, NPCS, questStatus, objProgress, objNeed, activeQuests, QUEST_ORDER } from './quests.js';
 import { calcStats, count, itemCompare, isUnlocked } from './state.js';
 import { playerSet, itemIcon, coinIcon, weaponSprite } from './sprites_chars.js';
@@ -34,6 +36,9 @@ function skillIconCanvas(id, cls) {
     case 'nova': for (let a = 0; a < 6; a++) { const an = (a / 6) * TAU; line(x, 12, 12, Math.round(12 + Math.cos(an) * 9), Math.round(12 + Math.sin(an) * 9), '#a8e0ff'); } disc(x, 12, 12, 3, '#fff'); disc(x, 12, 12, 1, '#a8e0ff'); for (let a = 0; a < 6; a++) { const an = (a / 6) * TAU + 0.5; dot(x, Math.round(12 + Math.cos(an) * 6), Math.round(12 + Math.sin(an) * 6), '#6ab4e8'); } break;
     case 'knives': for (let i = -1; i <= 1; i++) { x.save(); x.translate(12, 20); x.rotate(i * 0.45); rect(x, -1, -16, 2, 11, '#e8ecf6'); rect(x, -1, -16, 1, 11, '#fff'); rect(x, -2, -5, 4, 1, '#8a6a30'); rect(x, -1, -4, 2, 3, '#3a2a1c'); x.restore(); } break;
     case 'shadow': ellipse(x, 12, 14, 7, 8, '#4a2a68'); ellipse(x, 12, 12, 5, 6, '#6a3a90'); rect(x, 8, 10, 3, 2, '#e8c8ff'); rect(x, 14, 10, 3, 2, '#e8c8ff'); for (let i = 0; i < 5; i++) rect(x, 5 + i * 3, 20, 2, 3, '#4a2a68'); break;
+    case 'slam': rect(x, 4, 17, 16, 3, '#6a5a48'); rect(x, 6, 15, 12, 2, '#8a7a64'); for (const [dx, dy] of [[-8, -2], [8, -2], [-5, -6], [5, -6]]) rect(x, 12 + dx, 14 + dy, 2, 3, '#d8c8a0'); rect(x, 11, 3, 3, 10, '#e8ecf6'); rect(x, 9, 11, 7, 2, '#8a6a30'); rect(x, 11, 13, 3, 3, '#3a2a1c'); break;
+    case 'chain': line(x, 3, 5, 10, 11, '#bfe4ff'); line(x, 10, 11, 8, 13, '#bfe4ff'); line(x, 8, 13, 16, 19, '#bfe4ff'); line(x, 4, 5, 11, 11, '#fff'); line(x, 9, 13, 17, 19, '#fff'); disc(x, 20, 19, 2, '#a8d8ff'); disc(x, 4, 5, 2, '#a8d8ff'); break;
+    case 'dance': for (let i = 0; i < 4; i++) { x.save(); x.translate(4 + i * 5, 18 - i * 3); x.rotate(-0.8); rect(x, -1, -9, 2, 10, i === 3 ? '#fff' : '#b8bccc'); rect(x, -2, 1, 4, 1, '#8a6a30'); x.restore(); } dot(x, 20, 4, '#fff'); dot(x, 3, 20, '#9a8ab8'); break;
     case 'dodge': for (let i = 0; i < 3; i++) { rect(x, 4 + i * 2, 8 + i * 4, 12 - i * 2, 2, i === 0 ? '#fff' : '#9a8ab8'); } line(x, 14, 4, 20, 10, '#fff'); line(x, 14, 16, 20, 10, '#fff'); line(x, 15, 4, 21, 10, '#fff'); line(x, 15, 16, 21, 10, '#fff'); break;
     default: break;
   }
@@ -136,13 +141,13 @@ export class UI {
     const face = $('hud-face'); face.width = 26; face.height = 32;
     const x = face.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(set.d[0], 0, 0);
     const c = CLASSES[cls];
-    const mapIcon = { 't-attack': 'attack', 't-skill0': c.skills[0].id, 't-skill1': c.skills[1].id, 't-dodge': 'dodge' };
+    const mapIcon = { 't-attack': 'attack', 't-skill0': c.skills[0].id, 't-skill1': c.skills[1].id, 't-skill2': c.skills[2].id, 't-dodge': 'dodge' };
     for (const [id, ic] of Object.entries(mapIcon)) { const cv = $(id).querySelector('canvas'); cloneTo(skillIcon(ic, cls), cv, 24, 24); }
     for (const id of ['t-hp', 't-mp']) {
       const cv = $(id).querySelector('canvas');
       cloneTo(itemIcon(ITEMS[id === 't-hp' ? 'p_hp1' : 'p_mp1']), cv, 18, 18);
     }
-    $('t-skill0').title = c.skills[0].name; $('t-skill1').title = c.skills[1].name; $('t-dodge').title = c.dodge.name;
+    $('t-skill0').title = c.skills[0].name; $('t-skill1').title = c.skills[1].name; $('t-skill2').title = c.skills[2].name; $('t-dodge').title = c.dodge.name;
     this.cache = {};
   }
 
@@ -159,19 +164,31 @@ export class UI {
     set('gold', s.gold, (v) => { $('gold-txt').textContent = v; });
     // навыки
     const cls = CLASSES[s.cls];
-    for (let i = 0; i < 2; i++) {
-      const el = $('t-skill' + i), sk = cls.skills[i];
+    for (let i = 0; i < 3; i++) {
+      const el = $('t-skill' + i), sk = w.skillInfo(i).sk;
       const unlocked = isUnlocked(s, i);
-      const cd = p.cdSkill[i], frac = cd > 0 ? Math.min(1, cd / sk.cd) : 0;
-      set('sk' + i, `${unlocked}:${Math.round(frac * 40)}:${s.mp >= sk.mp}`, () => {
+      const inf = w.skillInfo(i);
+      const cd = p.cdSkill[i], frac = cd > 0 ? Math.min(1, cd / inf.cd) : 0;
+      set('sk' + i, `${unlocked}:${Math.round(frac * 40)}:${s.mp >= inf.mp}`, () => {
         el.classList.toggle('locked', !unlocked); el.dataset.lock = `ур. ${sk.unlock}`;
-        el.classList.toggle('cd', frac > 0); el.classList.toggle('nomp', unlocked && s.mp < sk.mp);
+        el.classList.toggle('cd', frac > 0); el.classList.toggle('nomp', unlocked && s.mp < inf.mp);
         el.querySelector('em').style.height = `${frac * 100}%`;
       });
     }
-    const dfrac = p.cdDodge > 0 ? Math.min(1, p.cdDodge / CFG.dodgeCd) : 0;
+    // Лик: кнопка видна, только если он надет
+    const lk = s.equip.lik ? ITEMS[s.equip.lik] : null;
+    const lfrac = p.cdLik > 0 ? Math.min(1, p.cdLik / CFG.likCd) : 0;
+    set('lik', `${lk ? lk.id : ''}:${Math.round(lfrac * 40)}:${p.buffs.lik > 0}`, () => {
+      const el = $('t-lik');
+      el.classList.toggle('none', !lk); el.classList.toggle('cd', lfrac > 0); el.classList.toggle('ready', !!lk && lfrac === 0);
+      el.querySelector('em').style.height = `${lfrac * 100}%`;
+      if (lk) { cloneTo(icon(lk.id), el.querySelector('canvas'), 24, 24); el.title = lk.name; }
+    });
+    const dfrac = p.cdDodge > 0 ? Math.min(1, p.cdDodge / (CFG.dodgeCd + (w.stats.dodgeCd ? -w.stats.dodgeCd : 0))) : 0;
     set('dodge', Math.round(dfrac * 40), () => { $('t-dodge').querySelector('em').style.height = `${dfrac * 100}%`; $('t-dodge').classList.toggle('cd', dfrac > 0); });
-    const hpN = count(s, 'p_hp1') + count(s, 'p_hp2'), mpN = count(s, 'p_mp1') + count(s, 'p_mp2');
+    const hpN = count(s, 'p_hp1') + count(s, 'p_hp2') + count(s, 'p_hp3'), mpN = count(s, 'p_mp1') + count(s, 'p_mp2') + count(s, 'p_mp3');
+    const fp = freePoints(s);
+    set('sp', fp, () => { const b = $('sp-badge'); b.textContent = fp; b.classList.toggle('on', fp > 0); });
     set('pot', `${hpN}:${mpN}`, () => {
       $('t-hp').querySelector('b').textContent = hpN; $('t-mp').querySelector('b').textContent = mpN;
       $('t-hp').classList.toggle('empty', !hpN); $('t-mp').classList.toggle('empty', !mpN);
@@ -236,7 +253,7 @@ export class UI {
     const d = document.createElement('div');
     d.className = 'qp';
     const items = r.items.map(([iid, n]) => `<span class="ri" data-i="${iid}"><canvas width="18" height="18"></canvas> ${ITEMS[iid].name}${n > 1 ? ' ×' + n : ''}</span>`).join('');
-    d.innerHTML = `<h4>Задание выполнено</h4><div class="qn">${q.title}</div><div class="rw">${r.xp ? `<span>+${r.xp} опыта</span>` : ''}${r.gold ? `<span>+${r.gold} зол.</span>` : ''}${items}</div>`;
+    d.innerHTML = `<h4>Задание выполнено</h4><div class="qn">${q.title}</div><div class="rw">${r.xp ? `<span>+${r.xp} опыта</span>` : ''}${r.gold ? `<span>+${r.gold} зол.</span>` : ''}${r.sp ? `<span>+${r.sp} оч. навыков</span>` : ''}${items}</div>`;
     for (const sp of d.querySelectorAll('.ri')) cloneTo(icon(sp.dataset.i), sp.querySelector('canvas'), 18, 18);
     box.innerHTML = ''; box.appendChild(d);
     setTimeout(() => d.remove(), 4900);
@@ -276,11 +293,11 @@ export class UI {
     if (this.lineIdx >= plan.lines.length - 1) {
       $('dlg-next').style.display = 'none';
       const box = $('dlg-choices'); box.innerHTML = '';
-      const choices = plan.choices && plan.choices.length ? plan.choices : [{ label: 'Закрыть', act: { t: 'close' } }];
+      const choices = plan.choices && plan.choices.length ? plan.choices : [{ label: 'Закрыть' }];
       choices.forEach((ch, i) => {
         const b = document.createElement('button');
         b.className = 'btn small' + (i === 0 ? ' primary' : ''); b.textContent = ch.label;
-        b.addEventListener('click', () => this.choose(ch.act));
+        b.addEventListener('click', () => this.choose(ch));
         box.appendChild(b);
       });
     }
@@ -290,23 +307,21 @@ export class UI {
     if (this.typing) { this.typed = this.fullText.length; $('dlg-text').textContent = this.fullText; this.typing = false; this.afterLine(); return true; }
     if (this.lineIdx < this.plan.lines.length - 1) { this.lineIdx++; this.showLine(); return true; }
     // последняя строка: Enter/Пробел выбирает первый вариант
-    const first = (this.plan.choices && this.plan.choices[0]) || { act: { t: 'close' } };
-    this.choose(first.act);
+    const first = (this.plan.choices && this.plan.choices[0]) || { label: 'Закрыть' };
+    this.choose(first);
     return true;
   }
-  choose(act) {
-    const plan = this.plan;
-    if (act.t === 'close') { this.closeDialog(); return; }
-    if (act.t === 'shop') { this.closeDialog(); this.g.openShop(act.id); return; }
-    this.g.act(act);
-    this.closeDialog();
+  // выбор реплики: мир применяет эффекты и отдаёт следующий узел (или null — разговор окончен)
+  choose(ch) {
+    if (!this.plan) return;
+    const next = ch.go !== undefined || (ch.fx && ch.fx.length) ? this.g.world.choose({ fx: [], ...ch }) : null;
+    if (next) { this.plan = null; this.openDialogue(next); this.g.afterChoice(); } else this.closeDialog();
   }
   closeDialog() {
     const plan = this.plan;
     if (!plan) return;
     this.plan = null;
     $('dialog').classList.remove('on');
-    if (plan.onEnd) this.g.act(plan.onEnd);
     this.g.afterUi();
   }
 
@@ -328,14 +343,14 @@ export class UI {
   }
   tierCls(it) { return it.type === 'quest' ? 'tq' : TIER_CLS[it.tier || 1]; }
   typeLabel(it) {
-    const base = { weapon: 'Оружие', armor: 'Броня', charm: 'Амулет', potion: 'Зелье', quest: 'Особый предмет' }[it.type];
+    const base = { weapon: 'Оружие', armor: 'Броня', charm: 'Амулет', lik: 'Лик', potion: 'Зелье', quest: 'Особый предмет' }[it.type];
     return it.cls ? `${base} · ${CLASSES[it.cls].name}` : base;
   }
 
   renderPanel() {
     for (const b of document.querySelectorAll('[data-tab]')) b.classList.toggle('on', b.dataset.tab === this.tab);
     const body = $('tab-body');
-    if (this.tab === 'char') this.renderChar(body); else if (this.tab === 'bag') this.renderBag(body); else this.renderQuests(body);
+    if (this.tab === 'char') this.renderChar(body); else if (this.tab === 'skills') this.renderSkills(body); else if (this.tab === 'bag') this.renderBag(body); else this.renderQuests(body);
   }
 
   renderChar(body) {
@@ -346,13 +361,13 @@ export class UI {
         <div style="width:100%"><div class="bar xp" style="height:10px"><i style="width:${s.lvl >= CFG.maxLevel ? 100 : (s.xp / xpForLevel(s.lvl)) * 100}%"></i></div></div>
         <div style="font:700 12px var(--ui)">${s.lvl >= CFG.maxLevel ? 'Максимальный уровень' : `Опыт ${s.xp} / ${xpForLevel(s.lvl)}`}</div></div>
         <h3 style="margin-top:1em">Характеристики</h3>
-        <div class="stat-list"><span>Здоровье</span><b>${st.maxHp}</b><span>Мана</span><b>${st.maxMp}</b><span>Урон</span><b>${st.atk}</b><span>Защита</span><b>${st.def}</b><span>Крит. шанс</span><b>${Math.round(st.crit * 100)}%</b><span>Скорость</span><b>${Math.round(st.spd * 100)}%</b><span>Убито врагов</span><b>${s.kills}</b><span>Золото</span><b>${s.gold}</b></div></div>
+        <div class="stat-list"><span>Здоровье</span><b>${st.maxHp}</b><span>Мана</span><b>${st.maxMp}</b><span>Урон</span><b>${st.atk}</b><span>Защита</span><b>${st.def}</b><span>Крит. шанс</span><b>${Math.round(st.crit * 100)}%</b><span>Скорость</span><b>${Math.round(st.spd * 100)}%</b>${st.lifesteal ? `<span>Вампиризм</span><b>${(st.lifesteal * 100).toFixed(1)}%</b>` : ''}${st.drPct ? `<span>Снижение урона</span><b>${Math.round(st.drPct * 100)}%</b>` : ''}<span>Убито врагов</span><b>${s.kills}</b><span>Золото</span><b>${s.gold}</b></div></div>
       <div><h3>Снаряжение</h3><div class="slots" id="slots"></div><div class="empty-note" style="padding:.6em;font-size:.85em">Нажми на предмет, чтобы снять</div></div>
       <div><h3>Умения</h3><div id="skills"></div></div></div>`;
     const hf = $('hf');
     hf.getContext('2d').drawImage(playerSet(s.cls, armor ? armor.tier : 1).d[0], 0, 0);
     const slots = $('slots');
-    for (const [slot, name] of [['weapon', 'Оружие'], ['armor', 'Броня'], ['charm', 'Амулет']]) {
+    for (const [slot, name] of [['weapon', 'Оружие'], ['armor', 'Броня'], ['charm', 'Амулет'], ['lik', 'Лик']]) {
       const id = s.equip[slot];
       const b = document.createElement('button');
       b.className = 'slot' + (id ? '' : ' empty');
@@ -365,7 +380,7 @@ export class UI {
       slots.appendChild(b);
     }
     const sk = $('skills');
-    const rows = [['attack', c.attack.name, 'Основная атака. Бей по врагам, чтобы копить опыт.', 1], ...c.skills.map((k) => [k.id, k.name, `${k.desc} (${k.mp} маны)`, k.unlock]), ['dodge', c.dodge.name, 'Короткий рывок с неуязвимостью.', 1]];
+    const rows = [['attack', c.attack.name, 'Основная атака. Бей по врагам, чтобы копить опыт.', 1], ...c.skills.map((k, i) => { const inf = w.skillInfo(i); return [k.id, k.name, `${k.desc} (${inf.mp} маны, ${inf.cd.toFixed(1)} с)`, k.unlock]; }), ['dodge', c.dodge.name, 'Короткий рывок с неуязвимостью.', 1]];
     for (const [id, name, desc, unlock] of rows) {
       const d = document.createElement('div');
       d.className = 'skill-row' + (s.lvl < unlock ? ' locked' : '');
@@ -375,9 +390,30 @@ export class UI {
     }
   }
 
+  renderSkills(body) {
+    const w = this.g.world, s = w.s;
+    const free = freePoints(s);
+    body.innerHTML = `<div class="sk-head"><span class="pts">Очков: ${free}</span><span style="font:600 .85em var(--ui)">Очко даётся за каждый уровень и за важные задания</span><button class="btn small" id="respec">Сбросить (${respecCost(s)} зол.)</button></div><div class="skt" id="skt"></div>`;
+    $('respec').addEventListener('click', () => { w.respecSkills(); this.renderPanel(); });
+    const box = $('skt');
+    BRANCHES[s.cls].forEach((bn, bi) => {
+      const col = document.createElement('div');
+      col.innerHTML = `<h4>${bn}</h4>`;
+      for (const n of TREE[s.cls].filter((x) => x.branch === bi)) {
+        const r = rankOfNode(s, n.id), can = canLearn(s, n.id);
+        const b = document.createElement('button');
+        b.className = 'node' + (can.ok ? ' can' : '') + (r >= n.max ? ' maxed' : '') + (!can.ok && r < n.max ? ' lock' : '');
+        b.innerHTML = `<b>${r}/${n.max}</b>${n.name}<small>${n.text}${!can.ok && r < n.max ? ` · ${can.why}` : ''}</small>`;
+        b.addEventListener('click', () => { if (w.learnNode(n.id)) this.renderPanel(); });
+        col.appendChild(b);
+      }
+      box.appendChild(col);
+    });
+  }
+
   renderBag(body) {
     const w = this.g.world, s = w.s;
-    const order = { weapon: 0, armor: 1, charm: 2, potion: 3, quest: 4 };
+    const order = { weapon: 0, armor: 1, charm: 2, lik: 3, potion: 4, quest: 5 };
     const ids = Object.keys(s.inv).filter((id) => ITEMS[id]).sort((a, b) => order[ITEMS[a].type] - order[ITEMS[b].type] || (ITEMS[a].tier || 0) - (ITEMS[b].tier || 0));
     if (!this.sel || !s.inv[this.sel]) this.sel = ids[0] || null;
     body.innerHTML = `<div class="bag"><div class="grid" id="grid"></div><div class="detail" id="detail"></div></div>`;
@@ -408,7 +444,7 @@ export class UI {
     const btns = box.querySelector('.it-btns');
     const addBtn = (label, fn, primary) => { const b = document.createElement('button'); b.className = 'btn small' + (primary ? ' primary' : ''); b.textContent = label; b.addEventListener('click', fn); btns.appendChild(b); };
     if (it.type === 'potion') addBtn('Использовать', () => { w.useItem(id); this.renderPanel(); }, true);
-    if (['weapon', 'armor', 'charm'].includes(it.type)) {
+    if (['weapon', 'armor', 'charm', 'lik'].includes(it.type)) {
       if (wrong) btns.insertAdjacentHTML('beforeend', `<span class="it-type">Только для класса: ${CLASSES[it.cls].name}</span>`);
       else addBtn('Надеть', () => { w.equipItem(id); this.renderPanel(); }, true);
     }
@@ -461,8 +497,7 @@ export class UI {
   renderShop() {
     const w = this.g.world, s = w.s;
     if (!this.shopOpen) return;
-    const names = { smith: 'Кузница', general: 'Лавка' };
-    $('shop-title').textContent = names[this.shopOpen] || 'Магазин';
+    $('shop-title').textContent = (SHOPS[this.shopOpen] && SHOPS[this.shopOpen].name) || 'Магазин';
     $('shop-gold').textContent = s.gold;
     for (const b of document.querySelectorAll('[data-stab]')) b.classList.toggle('on', b.dataset.stab === this.stab);
     const body = $('shop-body'); body.innerHTML = '';
@@ -477,7 +512,7 @@ export class UI {
       row.appendChild(b); body.appendChild(row);
     };
     if (this.stab === 'buy') {
-      for (const id of w.shopStock(this.shopOpen)) mk2(id, ITEMS[id].price, 'Купить', () => { w.buy(id); this.renderShop(); }, s.gold >= ITEMS[id].price);
+      for (const id of w.shopStock(this.shopOpen)) mk2(id, w.buyPrice(id), 'Купить', () => { w.buy(id); this.renderShop(); }, s.gold >= w.buyPrice(id));
     } else {
       const ids = Object.keys(s.inv).filter((id) => w.sellPrice(id) > 0);
       if (!ids.length) body.innerHTML = '<div class="empty-note">Нечего продавать</div>';
@@ -489,8 +524,11 @@ export class UI {
   showPause(on) { this.pauseOpen = on; $('pause').classList.toggle('on', on); }
   syncSettings(set) { $('p-music').value = Math.round(set.music * 100); $('p-sfx').value = Math.round(set.sfx * 100); }
   showDeath(on) { this.deathOpen = on; $('death').classList.toggle('on', on); }
-  showEnding(s) {
+  showEnding(s, id) {
+    const e = ENDINGS[id] || ENDINGS.close;
     this.endingOpen = true; $('ending').classList.add('on');
+    $('ending-title').textContent = e.title;
+    $('ending-text').innerHTML = e.text.map((l) => `<p>${l}</p>`).join('') + epilogue(s).map((l) => `<p class="epi">${l}</p>`).join('');
     $('ending-stats').innerHTML = [['Класс', CLASSES[s.cls].name], ['Уровень', s.lvl], ['Врагов побеждено', s.kills], ['Поражений', s.deaths], ['Время', fmtTime(s.playtime)]].map(([a, b]) => `<div>${a}<b>${b}</b></div>`).join('');
   }
   hideEnding() { this.endingOpen = false; $('ending').classList.remove('on'); }
@@ -512,7 +550,7 @@ export class UI {
     for (const c of Object.values(CLASSES)) {
       const b = document.createElement('button');
       b.className = 'class-card'; b.dataset.cls = c.id;
-      b.innerHTML = `<canvas width="26" height="32"></canvas><div class="class-name">${c.name}</div><div class="class-desc">${c.blurb}</div><div class="class-hint">${c.hint}</div><div class="class-skills"><b>${c.skills[0].name}</b> — ${c.skills[0].desc}<br><b>${c.skills[1].name}</b> (ур. 5) — ${c.skills[1].desc}</div>`;
+      b.innerHTML = `<canvas width="26" height="32"></canvas><div class="class-name">${c.name}</div><div class="class-desc">${c.blurb}</div><div class="class-hint">${c.hint}</div><div class="class-skills"><b>${c.skills[0].name}</b> — ${c.skills[0].desc}<br><b>${c.skills[1].name}</b> (ур. 5) — ${c.skills[1].desc}<br><b>${c.skills[2].name}</b> (ур. 10) — ${c.skills[2].desc}</div>`;
       b.addEventListener('click', () => onPick(c.id));
       row.appendChild(b);
       this.classCanvases.push([c.id, b.querySelector('canvas')]);
