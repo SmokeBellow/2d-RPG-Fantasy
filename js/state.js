@@ -1,7 +1,9 @@
 // Состояние игрока (сохраняется целиком) и производные характеристики. Без DOM.
 import { CLASSES, ITEMS, CFG, xpForLevel } from './defs.js';
+import { newGods, godEffects, godRank, favor as godFavor } from './gods.js';
+import { passiveStats, freePoints } from './skills.js';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function newState(cls) {
   const c = CLASSES[cls];
@@ -12,7 +14,7 @@ export function newState(cls) {
     hp: 1, mp: 1,
     gold: 15,
     inv: { p_hp1: 2, p_mp1: 1 },
-    equip: { weapon: c.startWeapon, armor: c.startArmor, charm: null },
+    equip: { weapon: c.startWeapon, armor: c.startArmor, charm: null, lik: null },
     quests: {},
     flags: {},
     opened: {},        // открытые сундуки и собранные узлы
@@ -24,7 +26,11 @@ export function newState(cls) {
     playtime: 0,
     deaths: 0,
     visited: {},
-    skillsSeen: {},
+    sk: {},            // ранги узлов дерева навыков
+    spBonus: 0,        // очки навыков за задания
+    gods: newGods(),   // скрытая репутация (видны только ранги, и только в Храме Семи)
+    curses: [],        // проклятия богов (навсегда)
+    choices: {},       // ключевые решения для эпилога
   };
   const st = calcStats(s);
   s.hp = st.maxHp; s.mp = st.maxMp;
@@ -39,6 +45,12 @@ export function resolveItem(id, cls) {
   if (!m) return id;
   return `${m[1] === 'weapon' ? 'w' : 'a'}_${ABBR[cls]}${m[2]}`;
 }
+
+const sum = (...os) => {
+  const out = {};
+  for (const o of os) for (const [k, v] of Object.entries(o)) out[k] = (out[k] || 0) + v;
+  return out;
+};
 
 export function calcStats(s) {
   const c = CLASSES[s.cls];
@@ -58,8 +70,31 @@ export function calcStats(s) {
     st.maxHp += it.hp || 0; st.maxMp += it.mp || 0; st.atk += it.atk || 0;
     st.def += it.def || 0; st.crit += it.crit || 0; st.spd += it.spd || 0;
   }
-  st.maxHp = Math.round(st.maxHp); st.maxMp = Math.round(st.maxMp);
-  st.atk = Math.round(st.atk * 10) / 10; st.def = Math.round(st.def * 10) / 10;
+  const ex = sum(passiveStats(s), godEffects(s));
+  st.maxHp = Math.round(st.maxHp * (1 + (ex.hpPct || 0)));
+  st.maxMp = Math.round(st.maxMp + (ex.mpFlat || 0));
+  st.atk = Math.round(st.atk * (1 + (ex.atkPct || 0)) * 10) / 10;
+  st.def = Math.round((st.def + (ex.defFlat || 0)) * (1 + (ex.defPct || 0)) * 10) / 10;
+  st.crit += ex.crit || 0;
+  st.spd += ex.spd || 0;
+  st.mpRegen = Math.max(0.5, st.mpRegen + (ex.mpRegen || 0));
+  st.hpRegen = ex.hpRegen || 0;
+  st.lifesteal = ex.lifesteal || 0;
+  st.cdr = Math.max(-0.5, Math.min(0.5, ex.cdr || 0));
+  st.drPct = Math.min(0.6, ex.drPct || 0);
+  st.bossDmg = ex.bossDmg || 0;
+  st.killHeal = ex.killHeal || 0;
+  st.dodgePct = ex.dodgePct || 0;
+  st.potionPct = ex.potionPct || 0;
+  st.goldPct = ex.goldPct || 0;
+  st.discount = ex.discount || 0;
+  st.atkSpeed = ex.atkSpeed || 0;
+  st.mpCost = Math.min(0.5, ex.mpCost || 0);
+  st.critDmg = ex.critDmg || 0;
+  st.backstab = ex.backstab || 0;
+  st.comboBonus = ex.comboBonus || 0;
+  st.dodgeCd = ex.dodgeCd || 0;
+  st.dodgeIframes = ex.dodgeIframes || 0;
   return st;
 }
 
@@ -73,9 +108,10 @@ export function removeItem(s, id, n = 1) {
   return true;
 }
 
+const SLOTS = ['weapon', 'armor', 'charm', 'lik'];
 export function equip(s, id) {
   const it = ITEMS[id];
-  if (!it || !['weapon', 'armor', 'charm'].includes(it.type)) return false;
+  if (!it || !SLOTS.includes(it.type)) return false;
   if (it.cls && it.cls !== s.cls) return false;
   if (count(s, id) < 1) return false;
   const slot = it.type;
@@ -125,3 +161,7 @@ export function itemCompare(s, id) {
   const score = (x) => (x ? (x.atk || 0) * 3 + (x.def || 0) * 3 + (x.hp || 0) * 0.3 + (x.mp || 0) * 0.3 + (x.crit || 0) * 100 : 0);
   return score(it) - score(cur);
 }
+
+// решения героя двигают мнение богов; возвращает смены рангов (для знамений)
+export function changeFavor(s, god, delta) { return godFavor(s, god, delta); }
+export { godRank, freePoints };

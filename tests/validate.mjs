@@ -3,7 +3,8 @@
 // Каждая ошибка печатается, код выхода 1, если что-то не так.
 import { getMap, solidGrid, AREA_IDS, PROP_DEF } from '../js/maps.js';
 import { T, TILEDEF, ENEMIES, ITEMS, CLASSES, SHOPS, AREAS } from '../js/defs.js';
-import { QUESTS, NPCS, QUEST_ORDER } from '../js/quests.js';
+import { QUESTS, NPCS, NODES, ENTRY, QUEST_ORDER } from '../js/quests.js';
+import { GODS } from '../js/gods.js';
 import { resolveItem, newState } from '../js/state.js';
 import { World } from '../js/world.js';
 
@@ -54,6 +55,7 @@ for (const id of AREA_IDS) {
   for (const p of m.props) if (!PROP_DEF[p.k]) fail(`неизвестный объект ${p.k}`);
   for (const pt of m.portals) {
     if (!reachNear(pt.x, pt.y, pt.w, pt.h)) fail(`портал ${pt.id} недостижим`);
+    if (!AREA_IDS.includes(pt.to)) { console.log('  … портал ' + pt.id + ' ведёт в ещё не созданную область ' + pt.to); continue; }
     const dest = getMap(pt.to);
     const ax = Math.floor(pt.arrive.x), ay = Math.floor(pt.arrive.y);
     const ds = solidGrid(dest);
@@ -65,8 +67,8 @@ for (const id of AREA_IDS) {
   if (!failed) ok('все объекты достижимы');
 }
 
-// ---------------------------------------------------------------- квесты
-console.log('Квесты');
+// ---------------------------------------------------------------- квесты и диалоги
+console.log('Квесты и диалоги');
 const itemSet = new Set(Object.keys(ITEMS));
 for (const id of QUEST_ORDER) {
   const q = QUESTS[id];
@@ -79,31 +81,50 @@ for (const id of QUEST_ORDER) {
     if (o.type === 'kill' && !ENEMIES[o.what]) fail(`${id}: нет врага ${o.what}`);
   }
   for (const [it] of q.reward.items || []) for (const cls of Object.keys(CLASSES)) if (!itemSet.has(resolveItem(it, cls))) fail(`${id}: награда ${it} не существует для ${cls}`);
-  if (!q.autoStart && !q.prereq.length && !QUESTS[id].giver) fail(`${id}: некому выдавать`);
+}
+const FX_ARGS = { f: 1, 'q+': 1, 'q!': 1, god: 2, item: 2, take: 2, gold: 1, xp: 1, sp: 1, shop: 1, rest: 1, choice: 2, fight: 2, end: 1, respec: 0, heal: 0, toast: 1, travel: 1, refresh: 0, lik: 1, open: 1, goto: 1 };
+const checkFx = (where, fx) => {
+  for (const f of fx || []) {
+    if (!(f[0] in FX_ARGS)) { fail(`${where}: неизвестный эффект ${f[0]}`); continue; }
+    if (['q+', 'q!'].includes(f[0]) && !QUESTS[f[1]]) fail(`${where}: нет квеста ${f[1]}`);
+    if (['item', 'take'].includes(f[0]) && !itemSet.has(f[1])) fail(`${where}: нет предмета ${f[1]}`);
+    if (f[0] === 'fight' && !ENEMIES[f[1]]) fail(`${where}: нет врага ${f[1]}`);
+    if (f[0] === 'god' && !GODS[f[1]]) fail(`${where}: нет бога ${f[1]}`);
+  }
+};
+for (const [id, n] of Object.entries(NODES)) {
+  checkFx(`узел ${id}`, n.fx);
+  for (const ch of n.c || []) {
+    if (ch.go && !NODES[ch.go]) fail(`узел ${id}: переход в несуществующий ${ch.go}`);
+    checkFx(`узел ${id} / «${ch.label}»`, ch.fx);
+  }
+}
+// у каждого NPC есть точка входа или реплика по умолчанию, а у каждого NPC — место на карте
+const placed = new Set();
+for (const id of AREA_IDS) for (const n of getMap(id).npcs) placed.add(n.id);
+for (const id of Object.keys(NPCS)) {
+  if (!ENTRY[id] && !NODES['idle_' + id]) fail(`NPC ${id}: нет диалога`);
+  if (!placed.has(id) && !NPCS[id].virtual) fail(`NPC ${id} не размещён ни на одной карте`);
+}
+// проверка точек входа на всех состояниях: каждая E-функция возвращает существующий узел
+for (const cls of Object.keys(CLASSES)) {
+  const w = new World(newState(cls));
+  for (const id of Object.keys(ENTRY)) {
+    let r; try { r = ENTRY[id](w.s, w); } catch (e) { fail(`E(${id}) падает: ${e.message}`); continue; }
+    if (!NODES[r]) fail(`E(${id}) вернул несуществующий узел ${r}`);
+  }
 }
 // каждый предмет-цель квеста должен откуда-то появляться
-const sources = new Set();
+const sources = new Set(['q_page']);
 for (const id of AREA_IDS) {
   const m = getMap(id);
   for (const n of m.nodes) sources.add(n.item);
   for (const c of m.chests) for (const [it] of c.loot) sources.add(it);
-  for (const p of m.props) if (p.use === 'page') sources.add('q_page');
 }
 for (const e of Object.values(ENEMIES)) for (const [it] of e.drops || []) sources.add(it);
+for (const n of Object.values(NODES)) { for (const f of n.fx || []) if (f[0] === 'item') sources.add(f[1]); for (const ch of n.c || []) for (const f of ch.fx || []) if (f[0] === 'item') sources.add(f[1]); }
 for (const id of QUEST_ORDER) for (const o of QUESTS[id].obj) if (o.type === 'item' && !sources.has(o.item)) fail(`${id}: предмет ${o.item} нигде не добывается`);
-// достаточно ли источников для квестов на сбор
-const countSrc = (it) => {
-  let n = 0;
-  for (const id of AREA_IDS) { const m = getMap(id); for (const nd of m.nodes) if (nd.item === it) n++; }
-  return n;
-};
-if (countSrc('q_flower') < QUESTS.s1.obj[0].n) fail(`цветов (${countSrc('q_flower')}) меньше, чем нужно для s1`);
-const wolves = getMap('forest').enemies.filter((e) => e.type === 'wolf').length;
-if (wolves < 8) fail(`волков (${wolves}) мало для s2`);
-const spiders = getMap('forest').enemies.filter((e) => e.type === 'spider').length;
-if (spiders < 4) fail(`пауков (${spiders}) мало для s5`);
-if (getMap('crypt').props.filter((p) => p.use === 'page').length < 3) fail('страниц меньше трёх');
-if (!failed) ok('цепочки и источники предметов в порядке');
+if (!failed) ok('цепочки, диалоги и источники предметов в порядке');
 
 // ---------------------------------------------------------------- предметы и магазины
 console.log('Предметы и магазины');

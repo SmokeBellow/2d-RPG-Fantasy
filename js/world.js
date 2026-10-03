@@ -7,8 +7,10 @@ import {
   calcStats, addItem, removeItem, count, addXp, equip as eqItem, unequip as uneqItem, resolveItem, isUnlocked,
 } from './state.js';
 import {
-  QUESTS, questStatus, acceptQuest, completeQuest, onKill, planTalk, autoCompletable, itemName,
+  QUESTS, NODES, ENTRY, NPCS, questStatus, acceptQuest, completeQuest, onKill, itemName,
 } from './quests.js';
+import { favor as godFavor, godRank, GODS, GOD_IDS, templeReading } from './gods.js';
+import { skillMod, respec as skillRespec, respecCost } from './skills.js';
 import { updateEnemy, makeBossState } from './ai.js';
 
 const TAU = Math.PI * 2;
@@ -65,7 +67,7 @@ export class World {
 
     // NPC
     this.npcs = map.npcs.map((n) => ({ ...n, px: (n.x + 0.5) * TILE, py: (n.y + 0.5) * TILE, t: Math.random() * 6 }))
-      .filter((n) => !(n.id === 'pushok' && this.s.flags.cat_found));
+      .filter((n) => this.npcVisible(n));
     // сундуки и узлы
     this.chests = map.chests.map((c) => ({ ...c, px: (c.x + 0.5) * TILE, py: (c.y + 0.5) * TILE, open: !!this.s.opened[c.id] }));
     this.nodes = map.nodes.map((c) => ({ ...c, px: (c.x + 0.5) * TILE, py: (c.y + 0.5) * TILE, taken: !!this.s.opened[c.id] }));
@@ -79,6 +81,8 @@ export class World {
     this.fxProps = [];
     for (const sp of map.enemies) {
       if (sp.unique && this.s.killed[sp.unique]) continue;
+      if (sp.showIf && !this.s.flags[sp.showIf]) continue;
+      if (sp.hideIf && this.s.flags[sp.hideIf]) continue;
       this.spawnEnemy(sp.type, (sp.x + 0.5) * TILE, (sp.y + 0.5) * TILE, sp.lvl, sp.unique);
     }
     // игрок
@@ -91,7 +95,22 @@ export class World {
     if (!first || !this.s.visited[id]) this.emit({ t: 'area', id, name: AREAS[id].name, sub: AREAS[id].sub });
     this.s.visited[id] = true;
     this.s.x = sx; this.s.y = sy;
-    this.emit({ t: 'music', theme: AREAS[id].theme });
+    this.emit({ t: 'music', theme: AREAS[id].music || AREAS[id].theme });
+  }
+
+  npcVisible(n) {
+    const f = this.s.flags;
+    if (n.showIf && !(Array.isArray(n.showIf) ? n.showIf.every((k) => f[k]) : f[n.showIf])) return false;
+    if (n.hideIf && (Array.isArray(n.hideIf) ? n.hideIf.some((k) => f[k]) : f[n.hideIf])) return false;
+    return true;
+  }
+  refreshNpcs() {
+    const have = new Set(this.npcs.map((n) => n.id));
+    const map = this.map;
+    this.npcs = this.npcs.filter((n) => this.npcVisible(n));
+    for (const n of map.npcs) {
+      if (!have.has(n.id) && this.npcVisible(n)) this.npcs.push({ ...n, px: (n.x + 0.5) * TILE, py: (n.y + 0.5) * TILE, t: 0 });
+    }
   }
 
   applyDoors() {
@@ -107,9 +126,9 @@ export class World {
   makePlayer() {
     return {
       x: 0, y: 0, r: CFG.playerRadius, vx: 0, vy: 0, face: Math.PI / 2, moving: false, anim: 0,
-      act: null, cdAtk: 0, cdSkill: [0, 0], cdDodge: 0, cdPot: 0, inv: 0, hurt: 0, dead: false,
-      buffs: { roar: 0, shadow: 0, slow: 0, web: 0 }, nextCrit: false, combo: 0, comboT: 0, dodge: null,
-      kbx: 0, kby: 0, lavaT: 0, regenAcc: 0, mpAcc: 0,
+      act: null, cdAtk: 0, cdSkill: [0, 0, 0], cdDodge: 0, cdPot: 0, cdLik: 0, inv: 0, hurt: 0, dead: false,
+      buffs: { roar: 0, shadow: 0, slow: 0, web: 0, lik: 0 }, lik: null, critCharges: 0, nextCrit: false, combo: 0, comboT: 0, dodge: null,
+      kbx: 0, kby: 0, lavaT: 0, regenAcc: 0, mpAcc: 0, hpAcc: 0,
     };
   }
 
@@ -168,10 +187,19 @@ export class World {
   playerVisible() { return this.p.buffs.shadow <= 0; }
 
   hurtPlayer(dmg, sx, sy, o = {}) {
-    const p = this.p;
+    const p = this.p, st = this.stats;
     if (p.dead || p.inv > 0 || (p.dodge && p.dodge.iframes > 0 && !o.unavoidable)) return false;
-    let d = dmg * (1 - this.stats.def / (this.stats.def + 40));
+    if (st.dodgePct && !o.unavoidable && Math.random() < st.dodgePct) {
+      this.emit({ t: 'text', x: p.x, y: p.y - 18, text: 'Мимо!', col: '#d9a6ff' });
+      p.inv = 0.25;
+      return false;
+    }
+    let d = dmg * (1 - st.def / (st.def + 40));
     if (p.buffs.roar > 0) d *= 0.7;
+    d *= 1 - st.drPct;
+    const lik = p.buffs.lik > 0 ? p.lik : null;
+    if (lik && lik.god === 'lyara') d *= 0.7;
+    if (lik && lik.god === 'torn') { d *= 0.4; o = { ...o, kb: 0 }; }
     d = Math.max(1, Math.round(d * (0.92 + Math.random() * 0.16)));
     this.s.hp -= d;
     p.inv = o.inv != null ? o.inv : CFG.invulnAfterHit;
@@ -212,29 +240,47 @@ export class World {
 
   hurtEnemy(e, dmg, o = {}) {
     if (!e.alive) return false;
-    const st = this.stats;
+    const st = this.stats, p = this.p;
+    const lik = p.buffs.lik > 0 ? p.lik : null;
     let crit = false;
     if (o.player) {
-      if (o.canCrit !== false && (this.p.nextCrit || Math.random() < st.crit)) {
-        crit = true; dmg *= this.p.nextCrit ? 3 : 1.8; this.p.nextCrit = false;
+      let cc = st.crit + (lik && lik.god === 'seyr' ? 0.5 : 0);
+      if (o.canCrit !== false && (p.nextCrit || p.critCharges > 0 || Math.random() < cc)) {
+        crit = true;
+        dmg *= p.nextCrit ? 3 + st.critDmg : 1.8 + st.critDmg;
+        if (p.nextCrit) p.nextCrit = false; else if (p.critCharges > 0) p.critCharges--;
       }
       dmg *= 0.92 + Math.random() * 0.16;
-      if (this.p.buffs.roar > 0) dmg *= 1.35;
+      if (p.buffs.roar > 0) dmg *= 1.35;
+      if (lik && lik.god === 'kharn') dmg *= 1.6;
+      if (e.boss && st.bossDmg) dmg *= 1 + st.bossDmg;
     }
     dmg = Math.max(1, Math.round(dmg));
     e.hp -= dmg;
     e.flash = 0.12;
+    if (o.player) {
+      const ls = st.lifesteal + (lik && lik.god === 'kharn' ? 0.15 : 0);
+      if (ls > 0) this.healPlayer(dmg * ls, true);
+    }
     if (!e.aggro && !e.boss) this.alert(e);
     e.aggro = true;
-    const ang = o.ang != null ? o.ang : angleTo(this.p.x, this.p.y, e.x, e.y);
+    const ang = o.ang != null ? o.ang : angleTo(p.x, p.y, e.x, e.y);
     const kb = (o.kb || 0) * (e.boss ? 0.15 : 1) * (e.def.hop ? 1.2 : 1);
     if (kb) { e.kbx += Math.cos(ang) * kb; e.kby += Math.sin(ang) * kb; if (!e.boss) e.stun = Math.max(e.stun, 0.12); }
     if (o.slow && !e.boss) e.slow = Math.max(e.slow, o.slow);
+    if (o.stun && !e.boss) e.stun = Math.max(e.stun, o.stun);
     this.emit({ t: 'dmg', x: e.x, y: e.y - e.r - 8, v: dmg, crit, who: 'e', big: dmg > 30 });
     this.emit({ t: 'hit', x: e.x, y: e.y - 4, ang, crit });
     this.emit({ t: 'sfx', n: crit ? 'crit' : 'hit' });
     if (e.hp <= 0) this.killEnemy(e);
     return true;
+  }
+
+  healPlayer(n, quiet = false) {
+    const s = this.s, st = this.stats;
+    const before = s.hp;
+    s.hp = Math.min(st.maxHp, s.hp + n);
+    if (!quiet && s.hp > before) this.emit({ t: 'dmg', x: this.p.x, y: this.p.y - 12, v: Math.round(s.hp - before), who: 'heal' });
   }
 
   alert(e) {
@@ -245,7 +291,7 @@ export class World {
 
   killEnemy(e) {
     e.alive = false; e.state = 'dead'; e.t = 0;
-    const s = this.s;
+    const s = this.s, st = this.stats, p = this.p;
     s.kills++;
     const d = e.def;
     const xp = Math.round(d.xp * e.xpMul);
@@ -254,16 +300,20 @@ export class World {
     this.emit({ t: 'sfx', n: d.boss ? 'bossdie' : 'die' });
     this.emit({ t: 'puff', x: e.x, y: e.y, big: !!d.boss, col: d.color || '#c8c8d0' });
     if (lv) { this.refreshStats(); this.emit({ t: 'levelup', lvl: s.lvl }); }
-    if (e.unique) s.killed[e.unique] = true;
-    for (const id of onKill(s, e.type)) this.emit({ t: 'quest', id, why: 'kill' });
-    // золото
-    const g = d.gold ? d.gold[0] + Math.floor(Math.random() * (d.gold[1] - d.gold[0] + 1)) : 0;
+    if (st.killHeal) this.healPlayer(st.killHeal, true);
+    if (e.unique) { s.killed[e.unique] = true; s.flags['k_' + e.unique] = true; }
+    for (const id of onKill(s, e.type, e.unique)) this.emit({ t: 'quest', id, why: 'kill' });
+    // золото (Лик Сейра удваивает)
+    const lik = p.buffs.lik > 0 ? p.lik : null;
+    let g = d.gold ? d.gold[0] + Math.floor(Math.random() * (d.gold[1] - d.gold[0] + 1)) : 0;
+    g = Math.round(g * (1 + st.goldPct) * (lik && lik.god === 'seyr' ? 2 : 1));
     if (g > 0) this.drop('gold', g, e.x, e.y);
     // предметы
     for (const [id, ch] of d.drops || []) if (Math.random() < ch) this.drop(id, 1, e.x, e.y);
     if (!d.boss) {
       if (Math.random() < 0.09) this.drop(Math.random() < 0.6 ? 'p_hp1' : 'p_mp1', 1, e.x, e.y);
       if (e.lvl >= 8 && Math.random() < 0.05) this.drop(Math.random() < 0.6 ? 'p_hp2' : 'p_mp2', 1, e.x, e.y);
+      if (e.lvl >= 14 && Math.random() < 0.04) this.drop(Math.random() < 0.6 ? 'p_hp3' : 'p_mp3', 1, e.x, e.y);
     }
     if (d.boss) {
       this.emit({ t: 'boss', e: null }); this.bossE = null;
@@ -271,11 +321,7 @@ export class World {
       this.emit({ t: 'shake', v: 6 });
       for (const o of this.enemies) if (o.alive && o.summoned) { o.hp = 0; o.alive = false; o.state = 'dead'; }
       this.teles.length = 0; this.projs = this.projs.filter((q) => q.from === 'p');
-    }
-    // финал
-    for (const id of autoCompletable(s)) {
-      const r = completeQuest(s, id);
-      if (r) { s.flags.victory = true; this.emit({ t: 'victory' }); }
+      if (e.type === 'oldone') this.emit({ t: 'finale' });
     }
     this.emit({ t: 'stats' });
   }
@@ -404,10 +450,16 @@ export class World {
     for (const k of Object.keys(p.buffs)) p.buffs[k] = Math.max(0, p.buffs[k] - dt);
     p.inv = Math.max(0, p.inv - dt); p.hurt = Math.max(0, p.hurt - dt);
     p.cdAtk = Math.max(0, p.cdAtk - dt); p.cdDodge = Math.max(0, p.cdDodge - dt); p.cdPot = Math.max(0, p.cdPot - dt);
-    p.cdSkill[0] = Math.max(0, p.cdSkill[0] - dt); p.cdSkill[1] = Math.max(0, p.cdSkill[1] - dt);
+    p.cdLik = Math.max(0, p.cdLik - dt);
+    for (let i = 0; i < 3; i++) p.cdSkill[i] = Math.max(0, p.cdSkill[i] - dt);
     if (p.comboT > 0) { p.comboT -= dt; if (p.comboT <= 0) p.combo = 0; }
-    // регенерация
-    p.mpAcc += st.mpRegen * dt;
+    const lik = p.buffs.lik > 0 ? p.lik : null;
+    // регенерация здоровья и маны
+    let hpRegen = st.hpRegen;
+    if (lik && lik.god === 'lyara') hpRegen += st.maxHp * 0.06 * lik.pot;
+    if (lik && lik.god === 'mara') hpRegen += st.maxHp * 0.03 * lik.pot;
+    if (hpRegen > 0 && s.hp < st.maxHp) { p.hpAcc += hpRegen * dt; if (p.hpAcc >= 1) { const n = Math.floor(p.hpAcc); s.hp = Math.min(st.maxHp, s.hp + n); p.hpAcc -= n; } }
+    p.mpAcc += st.mpRegen * (lik && lik.god === 'ori' ? 4 : 1) * dt;
     if (p.mpAcc >= 1) { const n = Math.floor(p.mpAcc); s.mp = Math.min(st.maxMp, s.mp + n); p.mpAcc -= n; }
     // нокбэк
     if (p.kbx || p.kby) {
@@ -433,9 +485,9 @@ export class World {
     let mx = inp.mx || 0, my = inp.my || 0;
     const ml = Math.hypot(mx, my);
     if (ml > 1) { mx /= ml; my /= ml; }
-    p.moving = ml > 0.1 && !p.dodge;
+    p.moving = ml > 0.1 && !p.dodge && !(p.act && p.act.kind === 'dance');
     if (p.moving) {
-      let speed = CFG.playerSpeed * st.spd * (p.buffs.web > 0 ? 0.55 : 1);
+      let speed = CFG.playerSpeed * st.spd * (p.buffs.web > 0 ? 0.55 : 1) * (lik && lik.god === 'kharn' ? 1.25 : 1);
       const tile = TILEDEF[this.tileAt(p.x, p.y)];
       if (tile.slow) speed *= tile.slow;
       if (p.act) speed *= p.act.kind === 'cast' ? 0.6 : 0.45;
@@ -455,8 +507,9 @@ export class World {
     if (inp.dodge && !p.dodge && p.cdDodge <= 0 && !p.act) this.startDodge(inp, cls);
     if (inp.potHp) this.usePotion('hp');
     if (inp.potMp) this.usePotion('mp');
+    if (inp.lik) this.useLik();
     if (!p.dodge && !p.act) {
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < 3; i++) {
         if (inp.skill && inp.skill[i]) { if (this.startSkill(i, inp, cls)) break; }
       }
       if (!p.act && inp.attack && p.cdAtk <= 0) this.startAttack(inp, cls);
@@ -464,11 +517,12 @@ export class World {
   }
 
   startDodge(inp, cls) {
-    const p = this.p;
+    const p = this.p, st = this.stats;
     let dx = inp.mx || 0, dy = inp.my || 0;
     if (!dx && !dy) { dx = Math.cos(p.face + Math.PI); dy = Math.sin(p.face + Math.PI); }   // без направления — шаг назад
     const l = Math.hypot(dx, dy); dx /= l; dy /= l;
-    p.cdDodge = CFG.dodgeCd;
+    p.cdDodge = Math.max(0.3, CFG.dodgeCd - st.dodgeCd);
+    const iframes = cls.dodge.iframes + st.dodgeIframes;
     if (cls.dodge.blink) {
       this.emit({ t: 'blink', x: p.x, y: p.y });
       let dist2 = 0;
@@ -477,51 +531,66 @@ export class World {
         p.x += dx * 2; p.y += dy * 2; dist2 += 2;
       }
       this.emit({ t: 'blink', x: p.x, y: p.y });
-      p.inv = Math.max(p.inv, cls.dodge.iframes);
+      p.inv = Math.max(p.inv, iframes);
       this.emit({ t: 'sfx', n: 'blink' });
     } else {
-      p.dodge = { t: 0, dx, dy, iframes: cls.dodge.iframes };
+      p.dodge = { t: 0, dx, dy, iframes };
       this.emit({ t: 'sfx', n: 'roll' });
     }
     p.face = Math.atan2(dy, dx);
   }
 
   startAttack(inp, cls) {
-    const p = this.p, a = cls.attack, s = this.s;
+    const p = this.p, a = cls.attack, s = this.s, st = this.stats;
     const ang = this.aimAngle(inp, CFG.autoAimRange, CFG.autoAimCone);
     p.face = ang;
-    p.cdAtk = a.cd;
+    p.cdAtk = a.cd * (1 - st.atkSpeed);
     if (a.kind === 'melee') {
       let combo = 0;
       if (a.combo) { combo = p.comboT > 0 ? (p.combo + 1) % 3 : 0; p.combo = combo; p.comboT = 0.7; }
-      p.act = { kind: 'swing', t: 0, hitAt: a.wind, dur: a.wind + 0.2, ang, done: false, combo, mult: a.mult * (combo === 2 ? 1.7 : 1) };
+      p.act = { kind: 'swing', t: 0, hitAt: a.wind, dur: a.wind + 0.2, ang, done: false, combo, mult: a.mult * (combo === 2 ? 1.7 + st.comboBonus : 1) };
       this.emit({ t: 'sfx', n: 'swing' });
     } else {
       p.act = { kind: 'cast', t: 0, hitAt: a.wind, dur: a.wind + 0.12, ang, done: false, what: 'bolt' };
     }
   }
 
+  // стоимость и перезарядка с учётом улучшений и пассивок
+  skillInfo(i) {
+    const s = this.s, st = this.stats, sk = CLASSES[s.cls].skills[i];
+    const mod = skillMod(s, sk.id);
+    const mp = Math.max(1, Math.round((sk.mp + mod.mp) * (1 - st.mpCost)));
+    const cd = Math.max(0.6, (sk.cd + mod.cd) * (1 - st.cdr));
+    return { sk, mod, mp, cd };
+  }
+
   startSkill(i, inp, cls) {
     const p = this.p, s = this.s;
-    const sk = cls.skills[i];
+    const { sk, mod, mp, cd } = this.skillInfo(i);
     if (!isUnlocked(s, i) || p.cdSkill[i] > 0) return false;
-    if (s.mp < sk.mp) { this.emit({ t: 'toast', text: 'Не хватает маны', kind: 'warn' }); this.emit({ t: 'sfx', n: 'deny' }); p.cdSkill[i] = 0.4; return false; }
-    s.mp -= sk.mp;
-    p.cdSkill[i] = sk.cd;
+    if (s.mp < mp) { this.emit({ t: 'toast', text: 'Не хватает маны', kind: 'warn' }); this.emit({ t: 'sfx', n: 'deny' }); p.cdSkill[i] = 0.4; return false; }
+    s.mp -= mp;
+    p.cdSkill[i] = cd;
     const ang = this.aimAngle(inp, CFG.autoAimRange * 1.2, CFG.autoAimCone);
     p.face = ang;
     switch (sk.id) {
       case 'whirl': p.act = { kind: 'whirl', t: 0, hitAt: 0.18, dur: 0.46, ang, done: false }; this.emit({ t: 'sfx', n: 'swing' }); break;
       case 'roar':
-        p.buffs.roar = 7; p.act = { kind: 'cast', t: 0, hitAt: 0, dur: 0.3, ang, done: true };
+        p.buffs.roar = 7 + mod.dur; p.act = { kind: 'cast', t: 0, hitAt: 0, dur: 0.3, ang, done: true };
         this.emit({ t: 'nova', x: p.x, y: p.y, r: 36, col: '#ffcc66' }); this.emit({ t: 'sfx', n: 'roar' });
         this.emit({ t: 'toast', text: 'Боевой клич!', kind: 'info' });
         break;
+      case 'slam': p.act = { kind: 'cast', t: 0, hitAt: 0.24, dur: 0.5, ang, done: false, what: 'slam' }; this.emit({ t: 'sfx', n: 'swing' }); break;
       case 'fireball': p.act = { kind: 'cast', t: 0, hitAt: 0.14, dur: 0.3, ang, done: false, what: 'fireball' }; break;
       case 'nova': p.act = { kind: 'cast', t: 0, hitAt: 0.12, dur: 0.38, ang, done: false, what: 'nova' }; break;
+      case 'chain': p.act = { kind: 'cast', t: 0, hitAt: 0.14, dur: 0.34, ang, done: false, what: 'chain' }; break;
       case 'knives': p.act = { kind: 'cast', t: 0, hitAt: 0.08, dur: 0.28, ang, done: false, what: 'knives' }; break;
+      case 'dance':
+        p.act = { kind: 'dance', t: 0, hitAt: 99, dur: 0.36, ang, done: false, hits: 0 };
+        p.inv = Math.max(p.inv, 0.4); this.emit({ t: 'sfx', n: 'roll' });
+        break;
       case 'shadow':
-        p.buffs.shadow = 3; p.nextCrit = true; p.act = { kind: 'cast', t: 0, hitAt: 0, dur: 0.2, ang, done: true };
+        p.buffs.shadow = 3 + mod.dur; p.nextCrit = true; p.act = { kind: 'cast', t: 0, hitAt: 0, dur: 0.2, ang, done: true };
         this.emit({ t: 'puff', x: p.x, y: p.y, big: true, col: '#5a3a78' }); this.emit({ t: 'sfx', n: 'shadow' });
         for (const e of this.enemies) if (e.alive && !e.boss && e.aggro && e.state !== 'wind') { e.aggro = false; e.state = 'idle'; }
         break;
@@ -530,9 +599,35 @@ export class World {
     return true;
   }
 
+  // Лик: временная форма аватара бога. Сила растёт с рангом (на «Избраннике» ×1,3)
+  useLik() {
+    const p = this.p, s = this.s, st = this.stats;
+    const id = s.equip.lik;
+    if (!id) { this.emit({ t: 'toast', text: 'У тебя нет надетого Лика', kind: 'info' }); return false; }
+    if (p.cdLik > 0) return false;
+    const god = ITEMS[id].god;
+    const rank = godRank(s, god);
+    if (rank < 2) { this.emit({ t: 'toast', text: `${GODS[god].name} молчит. Лик не откликается`, kind: 'warn' }); this.emit({ t: 'sfx', n: 'deny' }); p.cdLik = 3; return false; }
+    if (s.mp < CFG.likMp) { this.emit({ t: 'toast', text: 'Не хватает маны', kind: 'warn' }); return false; }
+    s.mp -= CFG.likMp;
+    p.cdLik = CFG.likCd * (1 - st.cdr);
+    const pot = rank >= 4 ? 1.3 : 1;
+    const dur = god === 'seyr' || god === 'kharn' ? 12 : god === 'issa' ? 8 : 10;
+    p.lik = { god, pot };
+    p.buffs.lik = dur;
+    if (god === 'ori') { p.cdSkill = [0, 0, 0]; p.cdDodge = 0; }
+    if (god === 'mara') for (const e of this.enemies) if (e.alive && dist(e.x, e.y, p.x, p.y) < 70) { if (e.boss) e.slow = 3; else e.stun = Math.max(e.stun, 3); }
+    if (god === 'issa') { p.buffs.shadow = 8; p.critCharges = 3; for (const e of this.enemies) if (e.alive && !e.boss && e.aggro) { e.aggro = false; e.state = 'idle'; } }
+    this.emit({ t: 'lik', god, x: p.x, y: p.y, color: GODS[god].color });
+    this.emit({ t: 'sfx', n: 'lik' });
+    this.emit({ t: 'toast', text: ITEMS[id].name, kind: 'good' });
+    return true;
+  }
+
   updateAct(dt, inp) {
     const p = this.p, a = p.act, st = this.stats, cls = CLASSES[this.s.cls];
     a.t += dt;
+    if (a.kind === 'dance') { this.danceStep(a, dt, st); if (a.t >= a.dur) p.act = null; return; }
     if (!a.done && a.t >= a.hitAt) {
       a.done = true;
       switch (a.kind) {
@@ -548,6 +643,21 @@ export class World {
     if (a.t >= a.dur) p.act = null;
   }
 
+  // Танец клинков: рывок и три серии ударов по всем врагам рядом
+  danceStep(a, dt, st) {
+    const p = this.p;
+    const mod = skillMod(this.s, 'dance');
+    this.move(p, Math.cos(a.ang) * (70 / 0.3) * dt, Math.sin(a.ang) * (70 / 0.3) * dt);
+    p.inv = Math.max(p.inv, 0.1);
+    const due = Math.floor(a.t / 0.1);
+    while (a.hits < Math.min(3, due)) {
+      a.hits++;
+      this.emit({ t: 'slash', x: p.x, y: p.y, ang: a.ang + (a.hits % 2 ? 0.5 : -0.5), range: 24, arc: 2.4, combo: a.hits, cls: 'rogue' });
+      this.emit({ t: 'sfx', n: 'swing' });
+      for (const e of this.enemies) if (e.alive && dist(p.x, p.y, e.x, e.y) - e.r <= 24) this.hurtEnemy(e, st.atk * (1.1 + mod.dmg), { player: true, kb: 30 });
+    }
+  }
+
   meleeHit(a, def, st) {
     const p = this.p;
     this.emit({ t: 'slash', x: p.x, y: p.y, ang: a.ang, range: def.range, arc: def.arc, combo: a.combo, cls: this.s.cls });
@@ -560,48 +670,90 @@ export class World {
       let m = a.mult;
       if (this.s.cls === 'rogue') {
         const back = angDiff(angleTo(e.x, e.y, p.x, p.y), e.face);
-        if (back > 2.0 && !e.boss) { m *= 1.5; this.emit({ t: 'text', x: e.x, y: e.y - 22, text: 'В спину!', col: '#d9a6ff' }); }
+        if (back > 2.0 && !e.boss) { m *= 1.5 + st.backstab; this.emit({ t: 'text', x: e.x, y: e.y - 22, text: 'В спину!', col: '#d9a6ff' }); }
       }
       this.hurtEnemy(e, st.atk * m, { player: true, ang: a.ang, kb: def.kb * (a.combo === 2 ? 1.6 : 1) });
       hits++;
     }
-    // разрушение: ничего не ломаем, зато даём звук промаха
     if (!hits) this.emit({ t: 'sfx', n: 'miss' });
   }
 
   whirlHit(st) {
     const p = this.p;
+    const mod = skillMod(this.s, 'whirl');
     this.emit({ t: 'nova', x: p.x, y: p.y, r: 36, col: '#ffe0a0', spin: true });
     this.emit({ t: 'sfx', n: 'whirl' });
     for (const e of this.enemies) {
       if (!e.alive) continue;
-      if (dist(p.x, p.y, e.x, e.y) - e.r <= 34) this.hurtEnemy(e, st.atk * 1.7, { player: true, kb: 95 });
+      if (dist(p.x, p.y, e.x, e.y) - e.r <= 34) this.hurtEnemy(e, st.atk * (1.7 + mod.dmg), { player: true, kb: 95 });
     }
   }
 
   castDo(a, cls, st) {
-    const p = this.p;
+    const p = this.p, s = this.s;
     const at = cls.attack;
+    const mod = (id) => skillMod(s, id);
     switch (a.what) {
       case 'bolt':
         this.shoot({ x: p.x + Math.cos(a.ang) * 8, y: p.y - 4 + Math.sin(a.ang) * 8, ang: a.ang, speed: at.speed, dmg: st.atk * at.mult, from: 'p', kind: 'bolt', life: at.range / at.speed, r: 3, kb: 24 });
         this.emit({ t: 'sfx', n: 'bolt' });
         break;
-      case 'fireball':
-        this.shoot({ x: p.x + Math.cos(a.ang) * 8, y: p.y - 4 + Math.sin(a.ang) * 8, ang: a.ang, speed: 150, dmg: st.atk * 2.2, from: 'p', kind: 'fire', life: 1.3, r: 4, aoe: 28 });
+      case 'fireball': {
+        const m = mod('fireball');
+        this.shoot({ x: p.x + Math.cos(a.ang) * 8, y: p.y - 4 + Math.sin(a.ang) * 8, ang: a.ang, speed: 150, dmg: st.atk * (2.2 + m.dmg), from: 'p', kind: 'fire', life: 1.3, r: 4, aoe: 28 + m.aoe });
         this.emit({ t: 'sfx', n: 'fire' });
         break;
-      case 'nova':
+      }
+      case 'nova': {
+        const m = mod('nova');
         this.emit({ t: 'nova', x: p.x, y: p.y, r: 46, col: '#a8e0ff' });
         this.emit({ t: 'sfx', n: 'ice' });
-        for (const e of this.enemies) if (e.alive && dist(p.x, p.y, e.x, e.y) - e.r <= 46) this.hurtEnemy(e, st.atk * 1.5, { player: true, kb: 50, slow: 2.5 });
+        for (const e of this.enemies) if (e.alive && dist(p.x, p.y, e.x, e.y) - e.r <= 46) this.hurtEnemy(e, st.atk * (1.5 + m.dmg), { player: true, kb: 50, slow: 2.5 + m.slow });
         break;
-      case 'knives':
+      }
+      case 'knives': {
+        const m = mod('knives');
         for (let i = -2; i <= 2; i++) {
-          this.shoot({ x: p.x, y: p.y - 4, ang: a.ang + i * 0.2, speed: 200, dmg: st.atk * 0.9, from: 'p', kind: 'knife', life: 0.55, r: 3, kb: 20 });
+          this.shoot({ x: p.x, y: p.y - 4, ang: a.ang + i * 0.2, speed: 200, dmg: st.atk * (0.9 + m.dmg), from: 'p', kind: 'knife', life: 0.55, r: 3, kb: 20 });
         }
         this.emit({ t: 'sfx', n: 'knife' });
         break;
+      }
+      case 'slam': {
+        const m = mod('slam');
+        const cx = p.x + Math.cos(a.ang) * 24, cy = p.y + Math.sin(a.ang) * 24;
+        this.emit({ t: 'boom', x: cx, y: cy, r: 40, col: '#e8c080', hard: true });
+        this.emit({ t: 'shake', v: 3 }); this.emit({ t: 'sfx', n: 'slam' });
+        for (const e of this.enemies) if (e.alive && dist(cx, cy, e.x, e.y) - e.r <= 40) this.hurtEnemy(e, st.atk * (2.4 + m.dmg), { player: true, kb: 110, stun: 1.2, ang: angleTo(cx, cy, e.x, e.y) });
+        break;
+      }
+      case 'chain': {
+        const m = mod('chain');
+        const maxT = 3 + m.targets;
+        const hit = new Set();
+        let from = { x: p.x, y: p.y - 6 };
+        const pts = [[from.x, from.y]];
+        let cur = null, bd = 1e9;
+        for (const e of this.enemies) {
+          if (!e.alive) continue;
+          const d = dist(p.x, p.y, e.x, e.y);
+          if (d > 150) continue;
+          const sc = d * (1 + angDiff(angleTo(p.x, p.y, e.x, e.y), a.ang));
+          if (sc < bd) { bd = sc; cur = e; }
+        }
+        for (let k = 0; k < maxT && cur; k++) {
+          hit.add(cur); pts.push([cur.x, cur.y - 4]);
+          this.hurtEnemy(cur, st.atk * (1.7 + m.dmg), { player: true, kb: 20, ang: angleTo(from.x, from.y, cur.x, cur.y) });
+          from = cur;
+          let nx = null, nd = 80;
+          for (const e of this.enemies) if (e.alive && !hit.has(e)) { const d = dist(cur.x, cur.y, e.x, e.y); if (d < nd) { nd = d; nx = e; } }
+          cur = nx;
+        }
+        if (pts.length === 1) pts.push([p.x + Math.cos(a.ang) * 90, p.y - 6 + Math.sin(a.ang) * 90]);
+        this.emit({ t: 'lightning', pts });
+        this.emit({ t: 'sfx', n: 'zap' });
+        break;
+      }
       default: break;
     }
   }
@@ -610,29 +762,30 @@ export class World {
   usePotion(kind) {
     const p = this.p, s = this.s, st = this.stats;
     if (p.cdPot > 0) return false;
-    const ids = kind === 'hp' ? ['p_hp1', 'p_hp2'] : ['p_mp1', 'p_mp2'];
+    const ids = kind === 'hp' ? ['p_hp1', 'p_hp2', 'p_hp3'] : ['p_mp1', 'p_mp2', 'p_mp3'];
     const cur = kind === 'hp' ? s.hp : s.mp, max = kind === 'hp' ? st.maxHp : st.maxMp;
     if (cur >= max) { this.emit({ t: 'toast', text: kind === 'hp' ? 'Здоровье полное' : 'Мана полная', kind: 'info' }); return false; }
     const have = ids.filter((id) => count(s, id) > 0);
     if (!have.length) { this.emit({ t: 'toast', text: 'Нет зелий', kind: 'warn' }); this.emit({ t: 'sfx', n: 'deny' }); return false; }
-    // берём наименьшее зелье, если оно закрывает недостачу; иначе большее
+    // берём наименьшее зелье, закрывающее недостачу; иначе самое большое
     const need = max - cur;
-    const small = have[0], big = have[have.length - 1];
-    const id = (ITEMS[small].heal || ITEMS[small].mana) >= need * 0.8 ? small : big;
+    const pw = (id) => (ITEMS[id].heal || ITEMS[id].mana) * (1 + st.potionPct);
+    const id = have.find((h) => pw(h) >= need * 0.8) || have[have.length - 1];
     return this.useItem(id);
   }
 
   useItem(id) {
     const s = this.s, st = this.stats, p = this.p, it = ITEMS[id];
     if (!it || count(s, id) < 1) return false;
+    const k = 1 + st.potionPct;
     if (it.heal) {
       if (s.hp >= st.maxHp) return false;
-      removeItem(s, id); s.hp = Math.min(st.maxHp, s.hp + it.heal);
-      this.emit({ t: 'dmg', x: p.x, y: p.y - 12, v: it.heal, who: 'heal' }); this.emit({ t: 'sfx', n: 'potion' });
+      removeItem(s, id); const v = Math.round(it.heal * k); s.hp = Math.min(st.maxHp, s.hp + v);
+      this.emit({ t: 'dmg', x: p.x, y: p.y - 12, v, who: 'heal' }); this.emit({ t: 'sfx', n: 'potion' });
     } else if (it.mana) {
       if (s.mp >= st.maxMp) return false;
-      removeItem(s, id); s.mp = Math.min(st.maxMp, s.mp + it.mana);
-      this.emit({ t: 'dmg', x: p.x, y: p.y - 12, v: it.mana, who: 'mana' }); this.emit({ t: 'sfx', n: 'potion' });
+      removeItem(s, id); const v = Math.round(it.mana * k); s.mp = Math.min(st.maxMp, s.mp + v);
+      this.emit({ t: 'dmg', x: p.x, y: p.y - 12, v, who: 'mana' }); this.emit({ t: 'sfx', n: 'potion' });
     } else return false;
     p.cdPot = CFG.potionCd;
     this.emit({ t: 'stats' });
@@ -743,9 +896,8 @@ export class World {
       // расстояние до прямоугольника объекта
       const rx = clamp(p.x, pr.x * TILE, (pr.x + pr.w) * TILE), ry = clamp(p.y, pr.y * TILE, (pr.y + pr.h) * TILE);
       const d = dist(p.x, p.y, rx, ry);
-      const lab = { shrine: 'Помолиться', lever: 'Потянуть', sign: 'Читать', page: 'Читать', beacon: 'Осмотреть' }[pr.use];
+      const lab = { shrine: 'Помолиться', lever: 'Потянуть', sign: 'Читать', page: 'Читать', beacon: 'Осмотреть', altar: 'Осмотреть' }[pr.use];
       if (pr.use === 'lever' && s.flags[pr.id]) continue;
-      if (pr.use === 'page' && s.flags['page_' + pr.n]) continue;
       const bias = pr.use === 'sign' ? 10 : 0;
       if (d < 24 && d + bias < bd) { bd = d + bias; best = { kind: 'use', ref: u, label: lab, x: u.px, y: u.py }; }
     }
@@ -758,11 +910,8 @@ export class World {
     switch (b.kind) {
       case 'npc': {
         const n = b.ref;
-        if (n.id === 'pushok') { /* сценарий в planTalk */ }
-        const plan = planTalk(s, n.id, this.rng);
         n.face = angleTo(n.px, n.py, p.x, p.y);
-        this.emit({ t: 'talk', plan });
-        this.emit({ t: 'sfx', n: 'talk' });
+        this.talk(n);
         break;
       }
       case 'chest': {
@@ -818,67 +967,132 @@ export class World {
         if (opened) { this.emit({ t: 'toast', text: 'Где-то вдали открылась тяжёлая дверь…', kind: 'good' }); this.emit({ t: 'shake', v: 3 }); this.emit({ t: 'sfx', n: 'door' }); }
         break;
       }
-      case 'sign': this.emit({ t: 'text', text: pr.text, panel: true, name: pr.k === 'obelisk' ? 'Надпись на камне' : 'Табличка' }); break;
+      case 'sign': this.emit({ t: 'text', text: pr.text, panel: true, name: pr.title || (pr.k === 'obelisk' ? 'Надпись на камне' : 'Табличка') }); break;
       case 'page': {
-        s.flags['page_' + pr.n] = true;
-        this.emit({ t: 'text', text: pr.text, panel: true, name: 'Страница летописи' });
-        this.giveItem('q_page', 1);
+        this.emit({ t: 'text', text: pr.text, panel: true, name: pr.title || 'Запись' });
+        if (!s.flags['read_' + pr.id]) { s.flags['read_' + pr.id] = true; if (pr.fx) this.applyFx(pr.fx); this.emit({ t: 'quest', id: null, why: 'flag' }); }
         break;
       }
       case 'beacon': {
-        if (s.flags.beacon_lit) { this.emit({ t: 'text', text: 'Маяк горит ровно. Слишком ровно для огня, который ничем не питается.', panel: true, name: 'Маяк' }); break; }
-        if (s.flags.forged && s.quests.m6 && s.quests.m6.state === 'active') {
-          s.flags.beacon_lit = true;
-          this.emit({ t: 'beacon' });
-          this.emit({ t: 'sfx', n: 'beacon' });
-          this.emit({ t: 'shake', v: 4 });
-          this.emit({ t: 'toast', text: 'Маяк вспыхнул! Барьер Скверны пал.', kind: 'good' });
-          this.emit({ t: 'quest', id: 'm6', why: 'flag' });
-        } else if (s.quests.m6 && s.quests.m6.state === 'active') {
-          this.emit({ t: 'text', text: 'Маяк холоден. Сначала нужно перековать осколки: Торвальд ждёт в кузнице.', panel: true, name: 'Маяк' });
-        } else {
-          this.emit({ t: 'text', text: 'Чаша пуста. На краю следы копоти, расчищенные чьей-то рукой, и не один раз.', panel: true, name: 'Маяк' });
-        }
+        // три маяка: у каждого своё сердце. Вернуть сердце на место значит вернуть маяку голос
+        const n = pr.beacon || 1;
+        const core = { 1: 'q_core', 2: 'q_core2', 3: 'q_core3' }[n];
+        if (s.flags['beacon' + n]) { this.emit({ t: 'text', text: 'Маяк звучит ровно. Низкий звук слышен даже сквозь стены.', panel: true, name: 'Маяк' }); break; }
+        if (count(s, core) > 0) {
+          removeItem(s, core, 1); s.flags['beacon' + n] = true;
+          this.emit({ t: 'beacon', id: n });
+          this.emit({ t: 'sfx', n: 'beacon' }); this.emit({ t: 'shake', v: 4 });
+          this.emit({ t: 'toast', text: 'Маяк снова звучит. Излучение вокруг стихает.', kind: 'good' });
+          this.emit({ t: 'quest', id: null, why: 'flag' }); this.emit({ t: 'stats' });
+        } else this.emit({ t: 'text', text: pr.silent || 'Маяк молчит. Внутри пустое гнездо там, где должно быть сердце.', panel: true, name: 'Маяк' });
         break;
       }
+      case 'altar': this.emit({ t: 'text', text: pr.text, panel: true, name: pr.title || 'Алтарь' }); break;
       default: break;
     }
   }
 
-  // Действия диалога (вызываются из UI)
-  act(a) {
+  // ------------------------------------------------------------- диалоги
+  // Узлы лежат в story_*.js. Вход в разговор выбирает ENTRY[npc]; дальше UI ходит по выборам.
+  talk(n) {
     const s = this.s;
-    switch (a.t) {
-      case 'accept':
-        if (acceptQuest(s, a.q)) {
-          this.emit({ t: 'toast', text: `Новое задание: ${QUESTS[a.q].title}`, kind: 'quest' });
-          this.emit({ t: 'sfx', n: 'quest' }); this.emit({ t: 'quest', id: a.q, why: 'accept' });
-        }
-        break;
-      case 'complete': this.completeQ(a.q); break;
-      case 'forge': {
-        s.flags.forged = true;
-        const w = `w_${{ warrior: 'war', mage: 'mag', rogue: 'rog' }[s.cls]}5`;
-        addItem(s, w, 1);
-        this.equipItem(w);
-        this.emit({ t: 'toast', text: `Перековано: ${ITEMS[w].name}!`, kind: 'good' });
-        this.emit({ t: 'sfx', n: 'forge' }); this.emit({ t: 'quest', id: 'm6', why: 'flag' });
-        break;
-      }
-      case 'catfound':
-        s.flags.cat_found = true;
-        this.npcs = this.npcs.filter((n) => n.id !== 'pushok');
-        this.emit({ t: 'toast', text: 'Пушок убежал домой!', kind: 'quest' }); this.emit({ t: 'quest', id: 's4', why: 'flag' });
-        break;
-      case 'rest': {
-        const cost = 20;
-        if (s.gold < cost) { this.emit({ t: 'toast', text: 'Не хватает золота', kind: 'warn' }); break; }
-        s.gold -= cost; s.hp = this.stats.maxHp; s.mp = this.stats.maxMp;
-        this.emit({ t: 'toast', text: 'Вы отлично выспались', kind: 'good' }); this.emit({ t: 'sfx', n: 'shrine' }); this.emit({ t: 'stats' });
-        break;
-      }
-      default: break;
+    this.talkNpc = n;
+    const fn = ENTRY[n.id];
+    let id = fn ? fn(s, this) : null;
+    if (!id || !NODES[id]) id = NODES['idle_' + n.id] ? 'idle_' + n.id : 'idle_default';
+    this.emit({ t: 'sfx', n: 'talk' });
+    this.emit({ t: 'talk', plan: this.openNode(id) });
+  }
+
+  openNode(id) {
+    const s = this.s, node = NODES[id];
+    if (!node) return null;
+    if (node.fx) this.applyFx(node.fx);
+    const npc = this.talkNpc;
+    const lines = typeof node.t === 'function' ? node.t(s, this) : node.t;
+    const choices = (node.c || []).filter((c) => !c.cond || c.cond(s, this));
+    return {
+      id,
+      name: node.n === undefined ? (npc && NPCS[npc.id] ? NPCS[npc.id].name : '') : node.n,
+      lines: lines.length ? lines : ['…'],
+      choices: choices.length ? choices : [{ label: 'Уйти', go: null, fx: [] }],
+      npcId: npc ? npc.id : null,
+    };
+  }
+
+  // игрок выбрал вариант: эффекты, затем следующий узел (или конец разговора)
+  choose(ch) {
+    if (ch.fx && ch.fx.length) this.applyFx(ch.fx);
+    if (ch.go) return this.openNode(ch.go);
+    return null;
+  }
+
+  favor(god, delta) {
+    const changes = godFavor(this.s, god, delta);
+    for (const c of changes) {
+      this.emit({ t: 'omen', god: c.god, up: c.to > c.from, name: GODS[c.god].name, color: GODS[c.god].color });
     }
+    if (changes.length) this.refreshStats();
+    return changes;
+  }
+
+  applyFx(list) {
+    const s = this.s;
+    for (const fx of list || []) {
+      const [op, a, b, c] = fx;
+      switch (op) {
+        case 'f': s.flags[a] = true; this.emit({ t: 'quest', id: null, why: 'flag' }); break;
+        case 'uf': delete s.flags[a]; break;
+        case 'q+':
+          if (acceptQuest(s, a)) {
+            this.emit({ t: 'toast', text: `Новое задание: ${QUESTS[a].title}`, kind: 'quest' });
+            this.emit({ t: 'sfx', n: 'quest' }); this.emit({ t: 'quest', id: a, why: 'accept' });
+          }
+          break;
+        case 'q!': this.completeQ(a); break;
+        case 'god': this.favor(a, b); break;
+        case 'item': this.giveItem(a, b || 1); break;
+        case 'take': removeItem(s, a, b || 1); this.emit({ t: 'quest', id: null, why: 'item' }); this.emit({ t: 'stats' }); break;
+        case 'gold': s.gold = Math.max(0, s.gold + a); this.emit({ t: 'toast', text: a >= 0 ? `+${a} золота` : `−${-a} золота`, kind: 'item' }); this.emit({ t: 'sfx', n: 'coin' }); this.emit({ t: 'stats' }); break;
+        case 'xp': {
+          const lv = addXp(s, a);
+          this.emit({ t: 'toast', text: `+${a} опыта`, kind: 'info' });
+          if (lv) { this.refreshStats(); this.emit({ t: 'levelup', lvl: s.lvl }); }
+          this.emit({ t: 'stats' });
+          break;
+        }
+        case 'sp': s.spBonus = (s.spBonus || 0) + a; this.emit({ t: 'toast', text: `Очки навыков: +${a}`, kind: 'good' }); this.emit({ t: 'stats' }); break;
+        case 'shop': this.emit({ t: 'shop', id: a }); break;
+        case 'rest': {
+          if (s.gold < a) { this.emit({ t: 'toast', text: 'Не хватает золота', kind: 'warn' }); break; }
+          s.gold -= a; s.hp = this.stats.maxHp; s.mp = this.stats.maxMp;
+          this.emit({ t: 'toast', text: 'Вы отлично выспались', kind: 'good' }); this.emit({ t: 'sfx', n: 'shrine' }); this.emit({ t: 'stats' });
+          break;
+        }
+        case 'heal': s.hp = this.stats.maxHp; s.mp = this.stats.maxMp; this.emit({ t: 'stats' }); break;
+        case 'choice': s.choices[a] = b === undefined ? true : b; break;
+        case 'respec':
+          if (skillRespec(s)) { this.refreshStats(); this.emit({ t: 'toast', text: 'Навыки сброшены. Очки возвращены', kind: 'good' }); this.emit({ t: 'stats' }); } else this.emit({ t: 'toast', text: 'Не хватает золота или нечего сбрасывать', kind: 'warn' });
+          break;
+        case 'fight': {
+          // [fight, тип врага, id NPC, уровень]: NPC превращается во врага на том же месте
+          const n = this.npcs.find((q) => q.id === b);
+          if (!n) break;
+          this.npcs = this.npcs.filter((q) => q !== n);
+          const e = this.spawnEnemy(a, n.px, n.py, c || 5, b);
+          e.aggro = true;
+          this.emit({ t: 'bossIntro2', name: ENEMIES[a].title || ENEMIES[a].name });
+          break;
+        }
+        case 'beacon': break;
+        case 'end': this.emit({ t: 'ending', id: a }); break;
+        case 'toast': this.emit({ t: 'toast', text: a, kind: b || 'info' }); break;
+        case 'travel': this.emit({ t: 'transition', to: a, x: b * TILE, y: c * TILE }); break;
+        case 'refresh': this.refreshNpcs(); break;
+        default: break;
+      }
+    }
+    this.refreshNpcs();
   }
 
   completeQ(id) {
@@ -887,6 +1101,9 @@ export class World {
     this.emit({ t: 'questDone', id, reward: r });
     this.emit({ t: 'sfx', n: 'fanfare' });
     if (r.levels) { this.refreshStats(); this.emit({ t: 'levelup', lvl: this.s.lvl }); }
+    if (r.sp) this.emit({ t: 'toast', text: `Очки навыков: +${r.sp}`, kind: 'good' });
+    for (const c of r.changes) this.emit({ t: 'omen', god: c.god, up: c.to > c.from, name: GODS[c.god].name, color: GODS[c.god].color });
+    if (r.changes.length) this.refreshStats();
     for (const n of r.next) this.emit({ t: 'toast', text: `Новое задание: ${QUESTS[n].title}`, kind: 'quest' });
     this.emit({ t: 'quest', id, why: 'done' });
     this.emit({ t: 'stats' });
@@ -896,19 +1113,21 @@ export class World {
   // ------------------------------------------------------------- торговля
   shopStock(id) {
     const s = this.s;
-    if (SHOPS[id].items) return SHOPS[id].items.slice();
-    const tiers = [...SHOPS[id].tiers];
-    if (s.quests.m5 && s.quests.m5.state === 'done') tiers.push(4);
-    return Object.values(ITEMS).filter((it) => ['weapon', 'armor'].includes(it.type) && it.cls === s.cls && tiers.includes(it.tier)).map((it) => it.id);
+    const sh = SHOPS[id];
+    if (sh.items) return sh.items.slice();
+    return Object.values(ITEMS).filter((it) => ['weapon', 'armor'].includes(it.type) && it.cls === s.cls && sh.tiers.includes(it.tier)).map((it) => it.id);
   }
+  buyPrice(id) { const it = ITEMS[id]; return it ? Math.max(1, Math.round(it.price * (1 - this.stats.discount))) : 0; }
+
   buy(id) {
     const s = this.s, it = ITEMS[id];
-    if (!it || s.gold < it.price) { this.emit({ t: 'toast', text: 'Не хватает золота', kind: 'warn' }); this.emit({ t: 'sfx', n: 'deny' }); return false; }
-    s.gold -= it.price; addItem(s, id, 1);
+    const price = this.buyPrice(id);
+    if (!it || s.gold < price) { this.emit({ t: 'toast', text: 'Не хватает золота', kind: 'warn' }); this.emit({ t: 'sfx', n: 'deny' }); return false; }
+    s.gold -= price; addItem(s, id, 1);
     this.emit({ t: 'sfx', n: 'coin' }); this.emit({ t: 'stats' });
     return true;
   }
-  sellPrice(id) { const it = ITEMS[id]; return it && it.type !== 'quest' ? Math.max(1, Math.floor(it.price * 0.4)) : 0; }
+
   sell(id) {
     const s = this.s;
     const pr = this.sellPrice(id);
@@ -937,7 +1156,8 @@ export class World {
       const x1 = pt.x * TILE - 2, y1 = pt.y * TILE - 2, x2 = (pt.x + pt.w) * TILE + 2, y2 = (pt.y + pt.h) * TILE + 2;
       if (p.x < x1 || p.x > x2 || p.y < y1 || p.y > y2) continue;
       const rq = pt.req;
-      if (rq && ((rq.item && !count(s, rq.item)) || (rq.flag && !s.flags[rq.flag]))) {
+      const flagOk = !rq || !rq.flag || (Array.isArray(rq.flag) ? rq.flag.every((f) => s.flags[f]) : s.flags[rq.flag]);
+      if (rq && ((rq.item && !count(s, rq.item)) || !flagOk)) {
         if (this.portalMsgT <= 0) {
           this.portalMsgT = 2.5;
           this.emit({ t: 'toast', text: rq.msg || pt.msg, kind: 'warn' });
